@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Boolean search — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .tok { display:inline-block; padding:2px 8px; margin:2px; border-radius:4px; background:var(--panel-2); border:1px solid var(--line); font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+    .tok.op { background:#3a2a14; color:var(--accent); border-color:#5a3a14; }
+    .tok.paren { color:var(--accent-2); }
+    .trace-step { padding:6px 8px; background:#11141a; border-radius:5px; margin-bottom:4px; font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+    .idx-row { display:grid; grid-template-columns: 180px 50px 1fr; gap:8px; padding:4px 8px; border-bottom:1px solid var(--line); font-size:12px; }
+    .idx-row .term { font-family:ui-monospace,Menlo,monospace; color:var(--accent); }
+    .idx-row .df { color:var(--ink-dim); text-align:right; }
+    .idx-row .docs { color:var(--ink-dim); font-family:ui-monospace,Menlo,monospace; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>Boolean search</h1><h2>The OG. <span class="kbd">AND</span> / <span class="kbd">OR</span> / <span class="kbd">NOT</span> over an inverted index.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Type a boolean expression with uppercase <span class="kbd">AND</span>, <span class="kbd">OR</span>, <span class="kbd">NOT</span> and parens.</li>
+          <li>Look at the <strong>parsed tokens</strong> and <strong>RPN</strong> (postfix) — that's what the engine actually evaluates.</li>
+          <li>The <strong>trace</strong> shows each set-operation step (terms → AND/OR/NOT → final).</li>
+          <li>Scroll to the <strong>inverted index</strong>: for every word, the list of doc-ids that contain it. This is the data structure that makes keyword search fast.</li>
+          <li>Click a term in the index to insert it into the query.</li>
+        </ol>
+        <details><summary>what's the inverted index doing?</summary><p>Instead of scanning every doc for every query, we precompute a map: <em>word → list of doc-ids</em>. Now <span class="kbd">a AND b</span> is just a set intersection of two short lists. BM25 and TF-IDF use the same structure under the hood — they just add scoring on top of these postings.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>query</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" placeholder="(modal OR cool) AND NOT bebop" value="" />
+          <button type="submit">search</button>
+        </form>
+      </div>
+
+      <div class="panel" id="parse-panel" style="display:none;">
+        <h3>parse</h3>
+        <div><span class="muted">tokens:</span> <span id="tokens"></span></div>
+        <div style="margin-top:8px;"><span class="muted">rpn (postfix):</span> <span id="rpn"></span></div>
+        <h3 style="margin-top:14px;">evaluation trace</h3>
+        <div id="trace"></div>
+      </div>
+
+      <div class="panel" id="results-panel" style="display:none;">
+        <h3>matched docs <span class="muted" id="match-count"></span></h3>
+        <div id="results"></div>
+      </div>
+
+      <div class="panel">
+        <h3>inverted index <span class="muted">(top 80 terms by doc frequency · click a term to use it)</span></h3>
+        <div id="index"></div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let latest = null;
+    window.JazzbotView = { page:"boolean", state: () => latest ? ({
+      page:"boolean", query: latest.query, tokens: latest.tokens, rpn: latest.rpn,
+      matched_count: latest.matched_count, trace: latest.trace,
+      results: latest.results.map(r=>({id:r.id,title:r.title}))
+    }) : { page:"boolean" } };
+
+    function renderTokens(el, toks){
+      el.innerHTML = "";
+      toks.forEach(t => {
+        const s = document.createElement("span");
+        s.className = "tok " + (["AND","OR","NOT"].includes(t) ? "op" : (t === "(" || t === ")" ? "paren" : ""));
+        s.textContent = t;
+        el.appendChild(s);
+      });
+    }
+
+    async function run(q){
+      try {
+        const d = await fetch(`/api/boolean/search?q=${encodeURIComponent(q)}`).then(r=>r.json());
+        if (d.detail) throw new Error(d.detail);
+        latest = d;
+        renderTokens(document.getElementById("tokens"), d.tokens);
+        renderTokens(document.getElementById("rpn"), d.rpn);
+        const tr = document.getElementById("trace"); tr.innerHTML = "";
+        d.trace.forEach((s,i)=>{
+          let line;
+          if (s.op === "TERM") line = `${i+1}. lookup '${s.term}' → ${s.result_size} docs: [${s.doc_ids.join(", ")}${s.doc_ids.length>=20?", …":""}]`;
+          else if (s.op === "NOT") line = `${i+1}. NOT (${s.input_size}) → ${s.result_size}`;
+          else line = `${i+1}. ${s.op} (${s.left_size}, ${s.right_size}) → ${s.result_size}`;
+          tr.insertAdjacentHTML("beforeend", `<div class="trace-step">${line}</div>`);
+        });
+        document.getElementById("match-count").textContent = `(${d.matched_count} of ${d.N})`;
+        const res = document.getElementById("results"); res.innerHTML = "";
+        d.results.forEach(r => res.insertAdjacentHTML("beforeend",
+          `<div class="result"><div class="head"><div class="title">${r.title} <span class="muted">[id ${r.id}]</span></div></div><div class="body">${r.text}</div></div>`));
+        document.getElementById("parse-panel").style.display = "block";
+        document.getElementById("results-panel").style.display = "block";
+      } catch(e) {
+        document.getElementById("trace").innerHTML = `<span style="color:var(--warn)">${e.message}</span>`;
+      }
+    }
+
+    async function loadIndex(){
+      const d = await fetch("/api/boolean/index?top_n=80").then(r=>r.json());
+      const root = document.getElementById("index"); root.innerHTML = "";
+      d.entries.forEach(e => {
+        const row = document.createElement("div");
+        row.className = "idx-row";
+        row.innerHTML = `<div class="term">${e.term}</div><div class="df">${e.df}</div><div class="docs">${e.doc_ids.join(", ")}</div>`;
+        row.style.cursor = "pointer";
+        row.addEventListener("click", () => {
+          const inp = document.getElementById("q");
+          inp.value = inp.value ? inp.value + " AND " + e.term : e.term;
+          inp.focus();
+        });
+        root.appendChild(row);
+      });
+    }
+
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
+    loadIndex();
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.boolean || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

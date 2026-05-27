@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MMR — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .pick-step { background:#11141a; border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12px; }
+    .pick-step .head { color: var(--accent); font-weight:600; }
+    .pick-step table { width:100%; margin-top:6px; font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+    .pick-step td { padding:1px 6px; }
+    .pick-step td.win { color: var(--good); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>MMR diversity re-ranking</h1><h2>Pure relevance often returns near-duplicates. MMR penalizes that.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Run a search. The left column shows plain semantic order (relevance only).</li>
+          <li>Drag the <strong>λ</strong> slider. <span class="kbd">λ=1</span> = pure relevance. <span class="kbd">λ=0</span> = pure diversity. Most useful zone is around 0.5–0.7.</li>
+          <li>The right column shows the MMR-reordered list. Compare titles — MMR usually swaps in different angles on the topic.</li>
+          <li>Scroll to "selection steps" to see, at each pick, the candidates considered, their relevance, and the diversity penalty.</li>
+        </ol>
+        <details><summary>the MMR formula</summary><p><span class="kbd">MMR(d) = λ · sim(query, d) − (1−λ) · max sim(d, picked)</span>. We iteratively pick the doc with the highest MMR until we have top-k. The penalty is the doc's similarity to whichever already-picked doc it resembles most.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>query</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="" placeholder="enter a query..." />
+          <button type="submit">search</button>
+        </form>
+        <div style="margin-top:10px;">
+          <label class="muted">λ (relevance ↔ diversity): <input type="range" id="lam" min="0" max="1" step="0.05" value="0.5" /> <span id="lamv">0.50</span></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+          <div><h3>semantic order (λ=1)</h3><div id="left"></div></div>
+          <div><h3>mmr order</h3><div id="right"></div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>selection steps</h3>
+        <div id="steps"></div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let latest = null;
+    window.JazzbotView = { page:"mmr", state: () => latest ? ({
+      page:"mmr", query: latest.query, lambda: latest.lambda,
+      semantic_order: latest.semantic_order, mmr_order: latest.mmr_order,
+      steps: latest.steps.map(s => ({step:s.step, picked_id:s.picked.id, picked_title:s.picked.title, picked_relevance:+s.picked.relevance.toFixed(3), picked_redundancy:+s.picked.redundancy.toFixed(3), mmr:+s.picked.mmr.toFixed(3)}))
+    }) : { page:"mmr" } };
+
+    function colList(list){
+      return list.map(r => `<div class="result"><div class="head"><div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div><div class="score">${r.score.toFixed(3)}</div></div></div>`).join("");
+    }
+    function renderSteps(steps){
+      return steps.map(s => {
+        const rows = s.considered.map(c => `<tr class="${c.id===s.picked.id?'win':''}"><td>${c.id===s.picked.id?'→':' '}</td><td>${c.title}</td><td>rel=${c.relevance.toFixed(3)}</td><td>red=${c.redundancy.toFixed(3)}${c.worst_neighbor!==null?` (vs #${c.worst_neighbor})`:""}</td><td>mmr=${c.mmr.toFixed(3)}</td></tr>`).join("");
+        return `<div class="pick-step">
+          <div class="head">step ${s.step}: picked #${s.picked.id} ${s.picked.title}</div>
+          <table>${rows}</table>
+        </div>`;
+      }).join("");
+    }
+
+    async function run(q){
+      const lam = +document.getElementById("lam").value;
+      const d = await fetch(`/api/mmr/search?q=${encodeURIComponent(q)}&lam=${lam}&top_k=5&candidate_k=15`).then(r=>r.json());
+      latest = d;
+      document.getElementById("left").innerHTML = colList(d.semantic_order);
+      document.getElementById("right").innerHTML = colList(d.mmr_order);
+      document.getElementById("steps").innerHTML = renderSteps(d.steps);
+    }
+
+    document.getElementById("lam").addEventListener("input", e => {
+      document.getElementById("lamv").textContent = (+e.target.value).toFixed(2);
+    });
+    document.getElementById("lam").addEventListener("change", () => {
+      const q = document.getElementById("q").value.trim();
+      if (q) run(q);
+    });
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.mmr || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

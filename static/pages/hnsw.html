@@ -11,9 +11,21 @@
     .ctrl input[type=range] { width: 120px; vertical-align: middle; }
     .layer-toggle button { margin-right: 4px; padding: 4px 10px; font-size: 12px; background: var(--panel-2); color: var(--ink-dim); border:1px solid var(--line); }
     .layer-toggle button.on { background: var(--accent); color:#111; border-color: var(--accent); }
-    #traversal-log { max-height: 220px; overflow-y: auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
-    #traversal-log div { padding: 1px 4px; }
+    #traversal-log { max-height: 320px; overflow-y: auto; font-family: ui-monospace, Menlo, monospace; font-size: 11px; border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+    #traversal-log div { padding: 2px 4px; cursor: pointer; border-radius: 3px; }
     #traversal-log div.hit { color: var(--good); }
+    #traversal-log div.current { background: rgba(245,177,74,0.18); }
+    #traversal-log div.stop { color: var(--accent-2); }
+    #traversal-log div.reject { color: var(--ink-dim); }
+    .step-info { font-size: 12px; line-height: 1.55; }
+    .step-info .label { color: var(--ink-dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 8px; }
+    .step-info .calc { font-family: ui-monospace, Menlo, monospace; background: #11141a; padding: 6px 8px; border-radius: 5px; color: var(--accent); }
+    .step-info .reason { font-style: italic; color: var(--ink); }
+    .step-info table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: ui-monospace, Menlo, monospace; }
+    .step-info td { padding: 2px 6px; border-bottom: 1px solid var(--line); }
+    .step-controls { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .step-controls button { padding: 4px 10px; font-size: 12px; }
+    .step-controls input[type=range] { width: 100px; }
   </style>
 </head>
 <body>
@@ -63,14 +75,35 @@
       </div>
 
       <div class="panel">
-        <h3>search traversal</h3>
+        <h3>search traversal <span class="muted">(step mode — see the math at every node)</span></h3>
         <form id="qform" style="display:flex; gap:8px;">
           <input type="text" id="q" placeholder="enter a query..." value="" />
-          <button type="submit">search & animate</button>
+          <button type="submit">search</button>
         </form>
-        <div style="display:grid; grid-template-columns: 1fr 280px; gap:14px; margin-top:10px;">
-          <div id="traversal-log"></div>
-          <div id="search-results"></div>
+        <div class="step-controls" id="step-controls" style="display:none; margin-top:10px;">
+          <button id="step-first" type="button">⏮</button>
+          <button id="step-prev" type="button">◀ prev</button>
+          <button id="step-play" type="button">▶ play</button>
+          <button id="step-next" type="button">next ▶</button>
+          <button id="step-last" type="button">⏭</button>
+          <label class="muted">speed
+            <input type="range" id="step-speed" min="80" max="1500" value="500" step="20" />
+          </label>
+          <span class="muted" id="step-counter"></span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px; margin-top:10px;">
+          <div>
+            <div class="muted" style="font-size:11px; margin-bottom:4px;">traversal log (click a row)</div>
+            <div id="traversal-log"></div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:11px; margin-bottom:4px;">what's happening at this step</div>
+            <div class="step-info" id="step-info"><span class="muted">run a search to see the algorithm think.</span></div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:11px; margin-bottom:4px;">final results</div>
+            <div id="search-results"></div>
+          </div>
         </div>
       </div>
     </main>
@@ -151,30 +184,96 @@
         .text(n => visitOrder.has(n.node) ? `(${visitOrder.get(n.node)}) ${n.title.slice(0,18)}` : n.title.slice(0,18));
     }
 
+    let currentStep = 0;
+    let playTimer = null;
+
+    function titleOf(nodeIdx){
+      const n = graph?.nodes[nodeIdx];
+      return n ? n.title : `node ${nodeIdx}`;
+    }
+
+    function renderStepInfo(idx){
+      const v = search.visited[idx];
+      const info = document.getElementById("step-info");
+      if (!v){ info.innerHTML = "<span class='muted'>—</span>"; return; }
+      const eventLabel = {visit:"VISIT", enter:"ENTER (entry point)", stop:"STOP"}[v.event] || v.event;
+      const candidatesRows = v.candidates.map(c => `<tr><td>node ${c.node}</td><td>${titleOf(c.node)}</td><td>${c.dist.toFixed(4)}</td></tr>`).join("") || "<tr><td colspan='3' class='muted'>(empty)</td></tr>";
+      const resultsRows = v.results.map(c => `<tr><td>node ${c.node}</td><td>${titleOf(c.node)}</td><td>${c.dist.toFixed(4)}</td></tr>`).join("") || "<tr><td colspan='3' class='muted'>(empty)</td></tr>";
+      info.innerHTML = `
+        <div><strong>step ${idx+1} of ${search.visited.length}</strong> · <span style="color:var(--accent);">${eventLabel}</span> · layer ${v.layer} · node ${v.node} (${titleOf(v.node)})</div>
+        <div class="label">calculation</div>
+        <div class="calc">${v.calc}</div>
+        <div class="label">decision</div>
+        <div class="reason">${v.reason}</div>
+        <div class="label">candidate heap (closest unexpanded, top 5)</div>
+        <table><tbody>${candidatesRows}</tbody></table>
+        <div class="label">result heap (best so far, top 5)</div>
+        <table><tbody>${resultsRows}</tbody></table>
+      `;
+    }
+
+    function gotoStep(idx){
+      if (!search) return;
+      idx = Math.max(0, Math.min(search.visited.length-1, idx));
+      currentStep = idx;
+      const v = search.visited[idx];
+      currentLayer = v.layer; renderLayerToggle();
+      draw(search.visited.slice(0, idx+1));
+      // highlight log row
+      document.querySelectorAll("#traversal-log div").forEach((d,i)=>{
+        d.classList.toggle("current", i===idx);
+        if (i===idx) d.scrollIntoView({block:"nearest"});
+      });
+      document.getElementById("step-counter").textContent = `step ${idx+1} / ${search.visited.length}`;
+      renderStepInfo(idx);
+    }
+
+    function stopPlay(){
+      if (playTimer){ clearInterval(playTimer); playTimer = null; document.getElementById("step-play").textContent = "▶ play"; }
+    }
+    function togglePlay(){
+      if (playTimer){ stopPlay(); return; }
+      const speed = +document.getElementById("step-speed").value;
+      document.getElementById("step-play").textContent = "❚❚ pause";
+      playTimer = setInterval(()=>{
+        if (currentStep >= search.visited.length-1){ stopPlay(); return; }
+        gotoStep(currentStep+1);
+      }, speed);
+    }
+
     async function doSearch(q){
+      stopPlay();
       const M=+document.getElementById("M").value, efC=+document.getElementById("efC").value, efS=+document.getElementById("efS").value;
       search = await fetch(`/api/hnsw/search?q=${encodeURIComponent(q)}&M=${M}&ef_construction=${efC}&ef_search=${efS}&top_k=5`).then(r=>r.json());
-      // log
+
       const resultIds = new Set(search.results.map(r=>r.node));
       const log = document.getElementById("traversal-log"); log.innerHTML = "";
       search.visited.forEach((v,i)=>{
         const hit = resultIds.has(v.node);
-        log.insertAdjacentHTML("beforeend", `<div class="${hit?'hit':''}">${String(i+1).padStart(3," ")}  L${v.layer}  node ${String(v.node).padStart(2," ")}  dist ${v.dist.toFixed(3)}${hit?"  ✓ result":""}</div>`);
+        const cls = [];
+        if (hit) cls.push("hit");
+        if (v.event === "stop") cls.push("stop");
+        if (v.event === "visit" && v.accepted === false) cls.push("reject");
+        const mark = hit ? " ✓" : (v.event==="stop" ? " ■" : (v.accepted===false ? " ✗" : ""));
+        const row = document.createElement("div");
+        row.className = cls.join(" ");
+        row.textContent = `${String(i+1).padStart(3," ")}  L${v.layer}  node ${String(v.node).padStart(2," ")}  d=${v.dist.toFixed(3)}${mark}`;
+        row.addEventListener("click", ()=>gotoStep(i));
+        log.appendChild(row);
       });
-      // results panel
+
       const rp = document.getElementById("search-results"); rp.innerHTML = "";
-      search.results.forEach(r => rp.insertAdjacentHTML("beforeend", `<div class="result"><div class="head"><div class="title">#${r.rank} ${r.title}</div><div class="score">${r.distance.toFixed(3)}</div></div></div>`));
-      // animate by replaying visited in layer order
-      currentLayer = search.top_layer; renderLayerToggle();
-      let step = 0;
-      const animate = () => {
-        if (step > search.visited.length) return;
-        draw(search.visited.slice(0, step));
-        step++;
-        setTimeout(animate, 120);
-      };
-      animate();
+      search.results.forEach(r => rp.insertAdjacentHTML("beforeend", `<div class="result"><div class="head"><div class="title">#${r.rank} ${r.title}</div><div class="score">d ${r.distance.toFixed(3)}</div></div></div>`));
+
+      document.getElementById("step-controls").style.display = "flex";
+      gotoStep(0);
     }
+
+    document.getElementById("step-first").addEventListener("click", ()=>{stopPlay(); gotoStep(0);});
+    document.getElementById("step-prev").addEventListener("click", ()=>{stopPlay(); gotoStep(currentStep-1);});
+    document.getElementById("step-next").addEventListener("click", ()=>{stopPlay(); gotoStep(currentStep+1);});
+    document.getElementById("step-last").addEventListener("click", ()=>{stopPlay(); gotoStep(search.visited.length-1);});
+    document.getElementById("step-play").addEventListener("click", togglePlay);
 
     document.querySelectorAll("input[type=range]").forEach(i => i.addEventListener("input", () => {
       document.getElementById(i.id+"v").textContent = i.value;

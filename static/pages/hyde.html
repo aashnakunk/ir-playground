@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>HyDE — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .hypothetical { background:#11141a; padding:12px 14px; border-radius:8px; border:1px dashed var(--accent); font-size:13px; line-height:1.55; }
+    .stat { display:inline-block; margin-right:18px; }
+    .stat strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>HyDE</h1><h2>Hypothetical Document Embeddings. The LLM dreams up an answer first; we search with that.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Ask a terse question (the kind a real user might type).</li>
+          <li><strong>Left:</strong> plain semantic results — what you'd get by embedding the question directly.</li>
+          <li><strong>Middle:</strong> the hypothetical answer the LLM invented. It might be partially wrong — that's OK, we're not using it as truth, just as a richer query.</li>
+          <li><strong>Right:</strong> HyDE results — what you get by embedding that hypothetical answer instead.</li>
+          <li>For terse questions, HyDE often surfaces a better top-1. For already-rich queries, plain semantic wins.</li>
+        </ol>
+        <details><summary>why does this work?</summary><p>Question embeddings and answer embeddings live in slightly different regions of the vector space. A short question doesn't look much like the long, factual passages in the corpus. The hypothetical answer <em>does</em> — even if it's hallucinated. So embedding-distance does a better job of finding the right passage.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>question</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="" placeholder="ask a question..." />
+          <button type="submit">run hyde</button>
+        </form>
+      </div>
+
+      <div class="panel" id="loading" style="display:none;"><span class="muted">generating hypothetical doc + retrieving...</span></div>
+
+      <div id="out"></div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let latest = null;
+    window.JazzbotView = { page:"hyde", state: () => latest ? ({
+      page:"hyde", question: latest.question,
+      hypothetical_doc: latest.hypothetical_doc,
+      plain_top: latest.plain_semantic.map(r=>({rank:r.rank,id:r.id,title:r.title,score:+r.score.toFixed(3)})),
+      hyde_top: latest.hyde.map(r=>({rank:r.rank,id:r.id,title:r.title,score:+r.score.toFixed(3)})),
+      timings_ms: latest.timings_ms
+    }) : { page:"hyde" } };
+
+    async function ask(q){
+      document.getElementById("loading").style.display="block";
+      document.getElementById("out").innerHTML="";
+      try {
+        const d = await fetch("/api/hyde/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q, top_k:5})}).then(r=>r.json());
+        if (d.detail) throw new Error(d.detail);
+        latest = d; render(d);
+      } catch(e){
+        document.getElementById("out").innerHTML = `<div class="panel"><span style="color:var(--warn)">${e.message}</span></div>`;
+      } finally { document.getElementById("loading").style.display="none"; }
+    }
+    function listHTML(list){
+      return list.map(r => `<div class="result"><div class="head"><div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div><div class="score">${r.score.toFixed(3)}</div></div></div>`).join("");
+    }
+    function render(d){
+      document.getElementById("out").innerHTML = `
+        <div class="panel">
+          <h3>step 1 · plain semantic (baseline)</h3>
+          ${listHTML(d.plain_semantic)}
+        </div>
+        <div class="panel">
+          <h3>step 2 · llm-generated hypothetical answer <span class="muted">(possibly inaccurate — that's fine)</span></h3>
+          <div class="hypothetical">${d.hypothetical_doc}</div>
+        </div>
+        <div class="panel">
+          <h3>step 3 · hyde results <span class="muted">(retrieved by embedding step 2's text)</span></h3>
+          ${listHTML(d.hyde)}
+        </div>
+        <div class="panel">
+          <h3>timings</h3>
+          <span class="stat">plain: <strong>${d.timings_ms.plain_embed_and_search} ms</strong></span>
+          <span class="stat">llm hypothetical: <strong>${d.timings_ms.llm_generate_hypothetical} ms</strong></span>
+          <span class="stat">hyde retrieve: <strong>${d.timings_ms.hyde_embed_and_search} ms</strong></span>
+        </div>
+      `;
+    }
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); ask(document.getElementById("q").value.trim()); });
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.hyde || "";
+      document.getElementById("q").value = def;
+      if (def) ask(def);
+    });
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

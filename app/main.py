@@ -8,10 +8,11 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-from app import cag, chat, rag
+from app import cag, chat, hyde, mmr, rag, rerank
 from app.corpus import load_corpus
 from app.theme import active as active_theme
 from app.retrievers import bm25 as bm25_retriever
+from app.retrievers import boolean as boolean_retriever
 from app.retrievers import hnsw as hnsw_retriever
 from app.retrievers import hybrid as hybrid_retriever
 from app.retrievers import semantic as semantic_retriever
@@ -98,6 +99,58 @@ def hnsw_search(q: str, M: int = 8, ef_construction: int = 16, ef_search: int = 
         return hnsw_retriever.search(q, M=M, ef_construction=ef_construction, ef_search=ef_search, top_k=top_k, seed=seed)
     except Exception as e:
         raise HTTPException(500, f"hnsw search failed: {e}")
+
+
+@app.get("/api/boolean/search")
+def boolean_search(q: str):
+    if not q.strip():
+        raise HTTPException(400, "query is empty")
+    try:
+        return boolean_retriever.search(q)
+    except Exception as e:
+        raise HTTPException(500, f"boolean search failed: {e}")
+
+
+@app.get("/api/boolean/index")
+def boolean_index(min_df: int = 1, top_n: int = 200):
+    return boolean_retriever.index_summary(min_df=min_df, top_n=top_n)
+
+
+@app.get("/api/mmr/search")
+def mmr_search(q: str, top_k: int = 5, candidate_k: int = 15, lam: float = 0.5):
+    if not q.strip():
+        raise HTTPException(400, "query is empty")
+    try:
+        return mmr.search(q, top_k=top_k, candidate_k=candidate_k, lam=lam)
+    except Exception as e:
+        raise HTTPException(500, f"mmr failed: {e}")
+
+
+class HydeRequest(BaseModel):
+    question: str
+    top_k: int = 5
+
+
+@app.post("/api/hyde/run")
+def hyde_run(req: HydeRequest):
+    try:
+        return hyde.run(req.question, top_k=req.top_k)
+    except Exception as e:
+        raise HTTPException(500, f"hyde failed: {e}")
+
+
+class RerankRequest(BaseModel):
+    query: str
+    top_k: int = 5
+    candidate_k: int = 15
+
+
+@app.post("/api/rerank/run")
+def rerank_run(req: RerankRequest):
+    try:
+        return rerank.run(req.query, top_k=req.top_k, candidate_k=req.candidate_k)
+    except Exception as e:
+        raise HTTPException(500, f"rerank failed: {e}")
 
 
 class AskRequest(BaseModel):

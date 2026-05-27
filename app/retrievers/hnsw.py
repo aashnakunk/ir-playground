@@ -49,6 +49,10 @@ class HNSW:
     def _random_level(self) -> int:
         return int(-math.log(self.rng.random() + 1e-12) * self.mL)
 
+    def _snap(self, heap: list[tuple[float, int]], k: int = 5, neg: bool = False) -> list[dict]:
+        items = sorted([(-d, n) if neg else (d, n) for d, n in heap])[:k]
+        return [{"node": n, "dist": round(d, 4)} for d, n in items]
+
     def _search_layer(self, q: np.ndarray, entry_points: list[int], ef: int, layer: int, visited_log: list | None = None) -> list[tuple[float, int]]:
         visited = set(entry_points)
         candidates: list[tuple[float, int]] = []
@@ -58,25 +62,63 @@ class HNSW:
             heapq.heappush(candidates, (d, ep))
             heapq.heappush(results, (-d, ep))
             if visited_log is not None:
-                visited_log.append({"layer": layer, "node": ep, "dist": d})
+                visited_log.append({
+                    "event": "enter",
+                    "layer": layer, "node": ep, "dist": d,
+                    "calc": f"cos_dist(query, node {ep}) = {d:.4f}",
+                    "reason": f"entry point at layer {layer}",
+                    "candidates": self._snap(candidates),
+                    "results": self._snap(results, neg=True),
+                })
 
         while candidates:
             d, c = heapq.heappop(candidates)
             worst = -results[0][0] if results else float("inf")
             if d > worst and len(results) >= ef:
+                if visited_log is not None:
+                    visited_log.append({
+                        "event": "stop",
+                        "layer": layer, "node": c, "dist": d,
+                        "calc": f"closest unexpanded ({d:.4f}) > worst result ({worst:.4f})",
+                        "reason": f"stop: no closer candidates possible at layer {layer}",
+                        "candidates": self._snap(candidates),
+                        "results": self._snap(results, neg=True),
+                    })
                 break
             for nb in self.neighbors[c][layer]:
                 if nb in visited:
                     continue
                 visited.add(nb)
                 dn = self.dist(q, self.vectors[nb])
-                if visited_log is not None:
-                    visited_log.append({"layer": layer, "node": nb, "dist": dn})
-                if len(results) < ef or dn < (-results[0][0]):
+                worst_now = -results[0][0] if results else float("inf")
+                accepted = len(results) < ef or dn < worst_now
+                if accepted:
                     heapq.heappush(candidates, (dn, nb))
                     heapq.heappush(results, (-dn, nb))
+                    popped = None
                     if len(results) > ef:
-                        heapq.heappop(results)
+                        popped_d, popped_n = heapq.heappop(results)
+                        popped = {"node": popped_n, "dist": round(-popped_d, 4)}
+                    reason = (
+                        f"accept neighbor of {c}: dist {dn:.4f} < worst result {worst_now:.4f}"
+                        if results and worst_now != float("inf") else
+                        f"accept neighbor of {c}: results not full yet"
+                    )
+                    if popped:
+                        reason += f"; evicted node {popped['node']} (dist {popped['dist']})"
+                else:
+                    reason = f"reject neighbor of {c}: dist {dn:.4f} >= worst result {worst_now:.4f} and results full"
+                if visited_log is not None:
+                    visited_log.append({
+                        "event": "visit",
+                        "layer": layer, "node": nb, "dist": dn,
+                        "expanded_from": c,
+                        "calc": f"cos_dist(query, node {nb}) = {dn:.4f}",
+                        "reason": reason,
+                        "accepted": accepted,
+                        "candidates": self._snap(candidates),
+                        "results": self._snap(results, neg=True),
+                    })
         return [(-d, n) for d, n in sorted(results, reverse=True)]
 
     def _select_neighbors(self, candidates: list[tuple[float, int]], M: int) -> list[int]:

@@ -14,11 +14,15 @@
           <h2>A hands-on tour of the seven techniques behind every search box and chatbot.</h2>
         </div>
         <nav>
+          <a href="/pages/boolean.html">boolean</a>
           <a href="/pages/tfidf.html">tfidf</a>
           <a href="/pages/bm25.html">bm25</a>
           <a href="/pages/semantic.html">semantic</a>
           <a href="/pages/hybrid.html">hybrid</a>
+          <a href="/pages/mmr.html">mmr</a>
           <a href="/pages/hnsw.html">hnsw</a>
+          <a href="/pages/rerank.html">rerank</a>
+          <a href="/pages/hyde.html">hyde</a>
           <a href="/pages/rag.html">rag</a>
           <a href="/pages/cag.html">cag</a>
         </nav>
@@ -60,6 +64,29 @@
           <li>
             <a href="/pages/cag.html">CAG</a>
             <span class="what">Skip the lookup — hand the chatbot the whole corpus and let it figure out what's relevant. Simpler, but costs more tokens.</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h3>going deeper</h3>
+        <p class="muted" style="margin-top:0;">Variants and tricks layered on top of the basics. Optional, but useful once you've done the recommended path.</p>
+        <ol class="path">
+          <li>
+            <a href="/pages/boolean.html">Boolean search + inverted index</a>
+            <span class="what">Pre-search-engine search. Type <span class="kbd">a AND NOT b</span>; watch the engine intersect sets of doc-ids from the underlying index.</span>
+          </li>
+          <li>
+            <a href="/pages/mmr.html">MMR (diversity re-ranking)</a>
+            <span class="what">If your top-5 results are all near-duplicates, MMR re-orders them to cover more ground. λ slider lets you choose relevance vs diversity.</span>
+          </li>
+          <li>
+            <a href="/pages/rerank.html">Re-ranking (2-stage retrieval)</a>
+            <span class="what">Retrieve cheap, then re-score with a heavier model. The standard production-RAG recipe.</span>
+          </li>
+          <li>
+            <a href="/pages/hyde.html">HyDE (LLM-assisted retrieval)</a>
+            <span class="what">Ask the LLM to invent a hypothetical answer first, then embed THAT to search. Often beats embedding a short question directly.</span>
           </li>
         </ol>
       </div>

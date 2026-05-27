@@ -15,7 +15,7 @@ class Theme:
     corpus: str          # filename stem under data/ (e.g. "jazz" -> data/jazz.json)
     name: str            # human-readable label
     tutor_role: str      # short phrase: "jazz tutor", "cuisine tutor"
-    default_queries: dict[str, str]  # per page: bm25, tfidf, semantic, hybrid, hnsw, rag, cag
+    default_queries: dict[str, str]  # per page
 
 
 THEMES: dict[str, Theme] = {
@@ -31,6 +31,10 @@ THEMES: dict[str, Theme] = {
             "hnsw": "modal jazz pioneers",
             "rag": "what made bebop different from swing?",
             "cag": "what made bebop different from swing?",
+            "boolean": "(modal OR cool) AND NOT bebop",
+            "mmr": "miles davis",
+            "hyde": "who pioneered electric jazz?",
+            "rerank": "spiritual jazz saxophone",
         },
     ),
     "cuisine": Theme(
@@ -45,6 +49,10 @@ THEMES: dict[str, Theme] = {
             "hnsw": "fermented korean vegetables",
             "rag": "what is the difference between curry traditions?",
             "cag": "what is the difference between curry traditions?",
+            "boolean": "(pasta OR pizza) AND italian",
+            "mmr": "fermented foods",
+            "hyde": "what makes mexican mole complex?",
+            "rerank": "raw fish preparations",
         },
     ),
 }

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Re-ranking — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .stat { display:inline-block; margin-right:18px; }
+    .stat strong { color: var(--accent); }
+    .row-rank { display:grid; grid-template-columns: 40px 1fr 60px 60px 60px; gap:8px; padding:6px 8px; border-bottom:1px solid var(--line); font-size:12px; align-items:center; }
+    .row-rank .num { color: var(--accent); font-weight: 700; }
+    .row-rank.up { background: rgba(110,231,183,0.08); }
+    .row-rank.down { background: rgba(252,165,165,0.08); }
+    .delta { font-family:ui-monospace,Menlo,monospace; text-align:right; }
+    .delta.up { color: var(--good); }
+    .delta.down { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>Re-ranking</h1><h2>Retrieve cheap with semantic, then re-order with a smarter model. The 2-stage trick behind most production RAG.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Type a query and run. We retrieve the top-15 by semantic similarity, then ask an LLM to score each (query, doc) pair 0–10.</li>
+          <li>The big table is "all candidates scored". The 🟢 / 🔴 highlights show which docs moved up or down vs the cheap retriever.</li>
+          <li>Top-5 "before" vs "after" sits at the top.</li>
+          <li>Notice: the LLM often promotes docs that semantically share <em>meaning</em> but didn't have the perfect embedding distance — and demotes off-topic near-neighbors.</li>
+        </ol>
+        <details><summary>why two stages instead of one?</summary><p>An LLM is too slow/expensive to score every doc in your corpus. A vector index can score millions instantly but is imprecise. The trick: retrieve cheap top-K, then use the LLM as a precise judge on a small candidate set. Real systems use small cross-encoder models (rerankers) for this; we use the chat model itself to demonstrate the concept.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>query</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="" placeholder="enter a query..." />
+          <button type="submit">retrieve + rerank</button>
+        </form>
+      </div>
+
+      <div class="panel" id="loading" style="display:none;"><span class="muted">retrieving + LLM scoring 15 candidates...</span></div>
+
+      <div id="out"></div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let latest = null;
+    window.JazzbotView = { page:"rerank", state: () => latest ? ({
+      page:"rerank", query: latest.query,
+      before: latest.before, after: latest.after,
+      all_scored: latest.all_scored.map(r=>({id:r.id,title:r.title,semantic_rank:r.semantic_rank,llm_score:r.llm_score,rerank_rank:r.rerank_rank}))
+    }) : { page:"rerank" } };
+
+    async function run(q){
+      document.getElementById("loading").style.display="block";
+      document.getElementById("out").innerHTML="";
+      try {
+        const d = await fetch("/api/rerank/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:q, top_k:5, candidate_k:15})}).then(r=>r.json());
+        if (d.detail) throw new Error(d.detail);
+        latest = d; render(d);
+      } catch(e){
+        document.getElementById("out").innerHTML = `<div class="panel"><span style="color:var(--warn)">${e.message}</span></div>`;
+      } finally { document.getElementById("loading").style.display="none"; }
+    }
+    function shortList(list){
+      return list.map(r => `<div class="result"><div class="head"><div class="title">#${r.rank ?? r.rerank_rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div><div class="score">${(r.score ?? r.llm_score).toFixed ? (r.score ?? r.llm_score).toFixed(2) : (r.score ?? r.llm_score)}</div></div></div>`).join("");
+    }
+    function render(d){
+      const rows = d.all_scored.map(r => {
+        const delta = r.semantic_rank - r.rerank_rank;
+        const cls = delta > 0 ? "up" : (delta < 0 ? "down" : "");
+        const arrow = delta > 0 ? `↑${delta}` : (delta < 0 ? `↓${-delta}` : "—");
+        const deltaCls = delta > 0 ? "up" : (delta < 0 ? "down" : "");
+        return `<div class="row-rank ${cls}">
+          <div class="num">#${r.rerank_rank}</div>
+          <div>${r.title} <span class="muted">[id ${r.id}]</span></div>
+          <div class="muted">was #${r.semantic_rank}</div>
+          <div>llm ${r.llm_score}</div>
+          <div class="delta ${deltaCls}">${arrow}</div>
+        </div>`;
+      }).join("");
+
+      document.getElementById("out").innerHTML = `
+        <div class="panel">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+            <div><h3>top-5 before (semantic)</h3>${shortList(d.before)}</div>
+            <div><h3>top-5 after (re-ranked)</h3>${shortList(d.after)}</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>all candidates, re-ranked</h3>
+          <div>${rows}</div>
+        </div>
+        <div class="panel">
+          <h3>timings</h3>
+          <span class="stat">retrieve: <strong>${d.timings_ms.retrieve} ms</strong></span>
+          <span class="stat">llm rerank (${d.candidate_k} candidates in one call): <strong>${d.timings_ms.llm_rerank} ms</strong></span>
+        </div>
+      `;
+    }
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.rerank || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>
