@@ -11,7 +11,7 @@
       <div class="topbar">
         <div>
           <h1>BM25</h1>
-          <h2>An upgrade to TF-IDF — same idea, fairer to long and short docs. Used by Google for years.</h2>
+          <h2>The keyword-ranking workhorse of modern search. Score docs by which of your rare query words they contain — adjusted fairly for doc length.</h2>
         </div>
         <nav>
           <a href="/">home</a>
@@ -21,14 +21,14 @@
       <div class="guide">
         <h3>try this</h3>
         <ol>
-          <li>Try the same search you ran on the TF-IDF page. The ranking is similar but the numbers are different.</li>
-          <li>The colored bars below each result show what each query word contributed. Wider = stronger.</li>
-          <li>Try a query with one very common word (like the corpus's main topic). Notice that common word adds almost nothing.</li>
+          <li>Type a query and search. Top results appear below.</li>
+          <li>Each result's colored bar shows what every query word contributed. Wider segment = stronger contribution.</li>
+          <li>Try a query with one very common word (the corpus's main topic). Notice that common word adds almost nothing — its IDF (top panel) is near zero.</li>
           <li>Try a query with one very rare word — even a short doc with just one match can shoot to the top.</li>
-          <li>Click a result and ask the tutor: <em>"how is BM25 different from TF-IDF?"</em></li>
+          <li>Click a result, then ask the tutor: <em>"why did this one win?"</em></li>
         </ol>
-        <div class="analogy"><strong>Think of it like:</strong> same word-counting idea as TF-IDF, but fair to short messages. A 1-word text saying "pizza!" shouldn't automatically beat a meaty paragraph that's actually about pizza, and the 50th "pizza" in a doc should help way less than the 2nd.</div>
-        <details><summary>what's BM25 doing differently?</summary><p>Two upgrades over TF-IDF: (1) <strong>saturation</strong> — the 50th time a word appears in a doc helps way less than the 2nd; (2) <strong>length normalization</strong> — long docs don't automatically win just because they have more chances to contain your words. Both are tuned by the <span class="kbd">k1</span> and <span class="kbd">b</span> knobs.</p></details>
+        <div class="analogy"><strong>Think of it like:</strong> searching your group chat for a topic. A 1-word text saying "pizza!" shouldn't automatically beat a meaty paragraph about pizza, and the 50th "pizza" in a doc should help way less than the 2nd. BM25 bakes in both rules.</div>
+        <details><summary>what's BM25 actually doing?</summary><p>Two upgrades over TF-IDF: (1) <strong>saturation</strong> — the 50th time a word appears in a doc helps way less than the 2nd; (2) <strong>length normalization</strong> — long docs don't automatically win just because they have more chances to contain your words. Both are tuned by the <span class="kbd">k1</span> and <span class="kbd">b</span> knobs.</p></details>
       </div>
 
       <div class="panel">

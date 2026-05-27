@@ -4,15 +4,6 @@
   <meta charset="utf-8" />
   <title>jazzbot — IR & RAG playground</title>
   <link rel="stylesheet" href="/static/common.css" />
-  <style>
-    .section-header { padding: 6px 0; margin: 16px 0 6px 0; }
-    .section-header h3 { color: var(--ink); font-size: 16px; text-transform: none; letter-spacing: 0; margin: 0; }
-    .section-header .tag { display:inline-block; padding: 2px 9px; border-radius: 10px; font-size: 11px; margin-left: 8px; vertical-align: middle; }
-    .tag.modern { background: rgba(110,231,183,0.15); color: var(--good); border: 1px solid var(--good); }
-    .tag.agent  { background: rgba(110,193,255,0.15); color: var(--accent-2); border: 1px solid var(--accent-2); }
-    .tag.foundational { background: rgba(154,163,178,0.10); color: var(--ink-dim); border: 1px solid var(--ink-dim); }
-    .section-header p { margin: 4px 0 0 0; color: var(--ink-dim); font-size: 12px; }
-  </style>
 </head>
 <body>
   <div class="layout">
@@ -20,117 +11,66 @@
       <div class="topbar">
         <div>
           <h1>How does search actually work?</h1>
-          <h2>A hands-on tour of the algorithms behind every modern search box, chatbot, and AI agent.</h2>
         </div>
         <nav>
-          <a href="#core">core</a>
-          <a href="#pipelines">pipelines</a>
-          <a href="#agents">agents</a>
-          <a href="#foundational">foundational</a>
+          <a href="https://github.com/aashnakunk/ir-playground" target="_blank">github</a>
         </nav>
       </div>
 
       <div class="hero">
-        <p class="big">When you type into a search box or ask a chatbot, something has to <strong>find relevant stuff</strong> and then <strong>decide what to do with it</strong>. This site walks through that pipeline — one algorithm per page — with live visuals and an embedded tutor that can see your screen.</p>
-        <p class="muted">Pick a section. Or start with <a href="/pages/bm25.html">BM25</a> if you want a 10-minute "I get it" intro. Use the spark buttons in the chat sidebar for plain-English analogies any time.</p>
+        <p class="big">When you type into a search box — Google, Spotify, YouTube, ChatGPT — something has to decide which results to show. Sometimes it counts words. Sometimes it compares meanings. Sometimes it draws a graph and walks across it.</p>
+        <p>This site lets you <strong>watch each of those techniques run</strong> on a small example corpus. Pick a tile below. Every page has a "try this" guide and a sidebar tutor that can see what's on your screen — ask it anything.</p>
       </div>
 
-      <div class="section-header" id="core">
-        <h3>Core retrieval <span class="tag modern">used in production today</span></h3>
-        <p>Given a query and a pile of docs, return the most relevant ones. The bread-and-butter of every RAG system.</p>
+      <div class="tile-section">
+        <div class="h">
+          <h3>Core retrieval</h3>
+          <span class="tag modern">in production today</span>
+        </div>
+        <div class="tile-grid">
+          <a class="tile" href="/pages/bm25.html"><span class="name">BM25</span><span class="desc">The keyword-matching workhorse. Used by Elasticsearch, Lucene, every search backend.</span></a>
+          <a class="tile" href="/pages/semantic.html"><span class="name">Semantic search</span><span class="desc">Find docs by meaning, not exact words. Powered by embeddings.</span></a>
+          <a class="tile" href="/pages/hybrid.html"><span class="name">Hybrid search</span><span class="desc">Combine keyword + meaning. The modern RAG default.</span></a>
+          <a class="tile" href="/pages/hnsw.html"><span class="name">HNSW</span><span class="desc">The graph that makes semantic search fast at million-doc scale.</span></a>
+        </div>
       </div>
-      <ol class="path">
-        <li>
-          <a href="/pages/bm25.html">BM25</a>
-          <span class="what">The keyword-matching workhorse. Used by Elasticsearch, Lucene, and basically every search backend.</span>
-        </li>
-        <li>
-          <a href="/pages/semantic.html">Semantic search</a>
-          <span class="what">Cosine similarity over embeddings. Finds docs by <em>meaning</em>, not by exact words.</span>
-        </li>
-        <li>
-          <a href="/pages/hybrid.html">Hybrid search</a>
-          <span class="what">Combine BM25 + semantic. Usually beats either alone — it's the modern RAG default.</span>
-        </li>
-        <li>
-          <a href="/pages/hnsw.html">HNSW</a>
-          <span class="what">The data structure that makes semantic search fast at million-doc scale. Step-mode shows the math.</span>
-        </li>
-      </ol>
 
-      <div class="section-header" id="pipelines">
-        <h3>RAG pipelines & enhancements <span class="tag modern">used in production today</span></h3>
-        <p>Once you can find relevant docs, what do you do with them? These techniques produce the answer.</p>
+      <div class="tile-section">
+        <div class="h">
+          <h3>RAG pipelines</h3>
+          <span class="tag modern">in production today</span>
+        </div>
+        <div class="tile-grid">
+          <a class="tile" href="/pages/rag.html"><span class="name">RAG</span><span class="desc">Look it up, then answer. How a chatbot grounds replies in real docs.</span></a>
+          <a class="tile" href="/pages/cag.html"><span class="name">CAG</span><span class="desc">Skip lookup. Cache the whole corpus in the prompt.</span></a>
+          <a class="tile" href="/pages/mmr.html"><span class="name">MMR</span><span class="desc">Diversity re-ranking. Stops your top-5 from being near-duplicates.</span></a>
+          <a class="tile" href="/pages/rerank.html"><span class="name">Rerank</span><span class="desc">Cheap retriever first, smarter model second. The 2-stage trick.</span></a>
+          <a class="tile" href="/pages/hyde.html"><span class="name">HyDE</span><span class="desc">LLM writes a hypothetical answer; we search with that.</span></a>
+        </div>
       </div>
-      <ol class="path">
-        <li>
-          <a href="/pages/rag.html">RAG</a>
-          <span class="what">Retrieve top-k, paste into the prompt, generate. The standard recipe.</span>
-        </li>
-        <li>
-          <a href="/pages/cag.html">CAG</a>
-          <span class="what">Skip retrieval — hand the model the entire corpus, cached. Cheaper than it sounds for repeat queries.</span>
-        </li>
-        <li>
-          <a href="/pages/mmr.html">MMR</a>
-          <span class="what">Diversity re-ranking. Stops your top-5 from being five near-duplicates.</span>
-        </li>
-        <li>
-          <a href="/pages/rerank.html">Re-ranking</a>
-          <span class="what">Cheap retriever first, smarter model second. The 2-stage trick behind almost every production RAG.</span>
-        </li>
-        <li>
-          <a href="/pages/hyde.html">HyDE</a>
-          <span class="what">LLM writes a hypothetical answer first; we search with that. Often beats embedding a terse question.</span>
-        </li>
-      </ol>
 
-      <div class="section-header" id="agents">
-        <h3>Agent search algorithms <span class="tag agent">used in modern reasoning agents</span></h3>
-        <p>These don't find docs — they find <em>paths</em>, <em>sequences</em>, or <em>plans</em>. Powers Tree-of-Thoughts reasoning, LLM token generation, and tree-search-based planning agents.</p>
+      <div class="tile-section">
+        <div class="h">
+          <h3>Agent search</h3>
+          <span class="tag agent">used in reasoning agents</span>
+        </div>
+        <div class="tile-grid">
+          <a class="tile" href="/pages/bfs-dfs.html"><span class="name">BFS / DFS</span><span class="desc">Two ways to walk a tree of next thoughts. The skeleton of Tree-of-Thoughts.</span></a>
+          <a class="tile" href="/pages/astar.html"><span class="name">A*</span><span class="desc">BFS with a compass. Heuristic-guided pathfinding.</span></a>
+          <a class="tile" href="/pages/beam.html"><span class="name">Beam search</span><span class="desc">How LLMs pick their next word. Keep top-k drafts alive.</span></a>
+          <a class="tile" href="/pages/mcts.html"><span class="name">MCTS</span><span class="desc">Random rollouts + UCB. Behind AlphaGo and LATS.</span></a>
+        </div>
       </div>
-      <ol class="path">
-        <li>
-          <a href="/pages/bfs-dfs.html">BFS / DFS</a>
-          <span class="what">Explore a tree of next reasoning steps level-by-level (BFS) or depth-first (DFS). The skeleton of Tree-of-Thoughts.</span>
-        </li>
-        <li>
-          <a href="/pages/astar.html">A*</a>
-          <span class="what">BFS plus a "how close to the goal" estimate. The classic pathfinding algorithm; used in some agent planners.</span>
-        </li>
-        <li>
-          <a href="/pages/beam.html">Beam search</a>
-          <span class="what">How LLMs pick their next word. Keep the top-k partial sequences, expand, prune to top-k again.</span>
-        </li>
-        <li>
-          <a href="/pages/mcts.html">MCTS</a>
-          <span class="what">Random rollouts + UCB. Behind AlphaGo and modern LLM-agent papers like LATS.</span>
-        </li>
-      </ol>
 
-      <div class="section-header" id="foundational">
-        <h3>Foundational <span class="tag foundational">history & background</span></h3>
-        <p>The algorithms BM25 and TF-IDF improved on. Not what you'd reach for first today, but understanding them makes everything above click.</p>
-      </div>
-      <ol class="path">
-        <li>
-          <a href="/pages/boolean.html">Boolean + inverted index</a>
-          <span class="what">Pre-1970s keyword search. Type <span class="kbd">a AND NOT b</span>; see the underlying data structure every modern keyword engine still uses.</span>
-        </li>
-        <li>
-          <a href="/pages/tfidf.html">TF-IDF</a>
-          <span class="what">"Count the rare words." The first scoring scheme. BM25 is a direct refinement.</span>
-        </li>
-      </ol>
-
-      <div class="panel" style="margin-top: 22px;">
-        <h3>how to use this site</h3>
-        <ul style="padding-left: 20px;">
-          <li><strong>Type queries</strong> and watch the visuals update — that's the whole point.</li>
-          <li><strong>Hover dotted labels</strong> for short definitions (try "IDF", "k1", "efSearch").</li>
-          <li><strong>Use the spark buttons</strong> in the chat sidebar for instant analogies, ELI5 explanations, or real-world use cases.</li>
-          <li><strong>Compare pages.</strong> Run the same query through BM25, Semantic, and Hybrid and notice how the rankings differ.</li>
-        </ul>
+      <div class="tile-section">
+        <div class="h">
+          <h3>Foundational</h3>
+          <span class="tag foundational">history</span>
+        </div>
+        <div class="tile-grid">
+          <a class="tile" href="/pages/boolean.html"><span class="name">Boolean</span><span class="desc">AND / OR / NOT. Plus a viz of the inverted index under every keyword engine.</span></a>
+          <a class="tile" href="/pages/tfidf.html"><span class="name">TF-IDF</span><span class="desc">"Count the rare words." The first scoring scheme.</span></a>
+        </div>
       </div>
     </main>
     <aside id="chat"></aside>

@@ -4,11 +4,10 @@ Open items for the next iteration. Picked up from the chat session ending 2026-0
 
 ## High priority — UX / navigation overhaul
 
-- [ ] **Reshape the site into two distinct surfaces:**
-  - **Home page** = wiki-style intro. Lead with what IR/RAG/agent-search *are*, with a clear conceptual map, key terms defined inline, plain English. No card grid of algorithms here.
-  - **`/explore` page** = tiled "Explore Algos" page. Grid of algorithm cards (icon + name + one-liner + category badge). Filter / sort by category. This is where the current per-section path lists belong.
-- [ ] **Replace the top-bar nav** ("tfidf bm25 semantic …"). It's too dense and reads as jargon. Possible replacements: a compact "Explore algos" link, a "Home" link, a corpus picker, a "Help" link. Per-page back-button to /explore.
-- [ ] **Audit every page for jargon.** Plain English first, vocabulary second. Concrete miss to fix: BM25 page subtitle says *"upgrade to TF-IDF"* but in the new Core section BM25 is listed before TF-IDF (TF-IDF is now under Foundational). Either reorder, or rewrite copy so each page stands alone without referencing siblings by position.
+- [x] **Reshape the home page** — wiki-style hero + tiled algo grid grouped by category. (Single-page solution — no separate /explore page; the tiles ARE the explore surface.) Done.
+- [x] **Replace the top-bar nav** with a single `github` link. Done.
+- [x] **Fix BM25 page** — no longer references "TF-IDF predecessor" framing; stands alone. Done.
+- [ ] **Audit remaining pages for similar standalone-framing issues.** Each page subtitle + guide should make sense without depending on the user having read sibling pages first.
 
 ## Copy / content cleanup
 

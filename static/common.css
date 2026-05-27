@@ -277,3 +277,53 @@ button.ghost {
 }
 .path li a { color: var(--accent); font-weight: 600; }
 .path li .what { color: var(--ink-dim); font-size: 13px; margin-top: 2px; display: block; }
+
+/* Tiled algorithm grid (landing page) */
+.tile-section { margin: 22px 0 10px 0; }
+.tile-section .h {
+  display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px;
+}
+.tile-section .h h3 {
+  margin: 0; color: var(--ink); font-size: 15px; text-transform: none;
+  letter-spacing: 0; font-weight: 600;
+}
+.tile-section .h .tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.tile-section .h .tag.modern { background: rgba(110,231,183,0.12); color: var(--good); }
+.tile-section .h .tag.agent { background: rgba(110,193,255,0.12); color: var(--accent-2); }
+.tile-section .h .tag.foundational { background: rgba(154,163,178,0.10); color: var(--ink-dim); }
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+a.tile {
+  display: block;
+  padding: 14px 14px 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.12s, transform 0.08s;
+}
+a.tile:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+a.tile .name {
+  display: block;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+a.tile .desc {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.4;
+}
