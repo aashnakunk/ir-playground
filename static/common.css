@@ -135,9 +135,25 @@ button.ghost {
 #chat .msg.user { color: var(--accent-2); }
 #chat .msg.assistant { color: var(--ink); white-space: pre-wrap; }
 #chat .msg .who { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
-#chat .composer {
+#chat .pills {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px 10px 0 10px;
   border-top: 1px solid var(--line);
-  padding: 10px;
+}
+#chat .pill {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 4px 9px;
+  font-size: 11px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+#chat .pill:hover { border-color: var(--accent); color: var(--accent); }
+#chat .pill .spark { color: var(--accent); }
+
+#chat .composer {
+  padding: 8px 10px 10px 10px;
   display: flex;
   gap: 8px;
 }
@@ -202,6 +218,16 @@ button.ghost {
   font-size: 12px;
   font-style: italic;
 }
+.guide .analogy {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(110,193,255,0.08);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.guide .analogy strong { color: var(--accent-2); }
 .guide details summary {
   cursor: pointer;
   color: var(--ink-dim);

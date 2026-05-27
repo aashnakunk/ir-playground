@@ -32,6 +32,7 @@
           <li>Top-5 "before" vs "after" sits at the top.</li>
           <li>Notice: the LLM often promotes docs that semantically share <em>meaning</em> but didn't have the perfect embedding distance — and demotes off-topic near-neighbors.</li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> a hiring funnel. A 5-minute resume scan narrows 1,000 applicants to 15, then a real interviewer (more expensive, much smarter) picks the top 5. Same pattern: fast & dumb first, slow & sharp second.</div>
         <details><summary>why two stages instead of one?</summary><p>An LLM is too slow/expensive to score every doc in your corpus. A vector index can score millions instantly but is imprecise. The trick: retrieve cheap top-K, then use the LLM as a precise judge on a small candidate set. Real systems use small cross-encoder models (rerankers) for this; we use the chat model itself to demonstrate the concept.</p></details>
       </div>
 

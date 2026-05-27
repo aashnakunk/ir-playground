@@ -27,6 +27,7 @@
           <li>Compare to the RAG page: that one sent ~250 prompt tokens. This sends ~1,800. Without caching, CAG would be much pricier.</li>
           <li>Ask the tutor: <em>"when would RAG be better than CAG?"</em></li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> memorizing the textbook before the exam vs. flipping to a chapter mid-answer (that's RAG). CAG is slower per question if you do it once, but caching makes the second question onwards basically free.</div>
         <details><summary>why use CAG at all?</summary><p>RAG can fail when the best chunk wasn't retrieved (or the question needs context spread across many chunks). CAG sidesteps that by always giving the model everything. The tradeoff is cost and context window: CAG only works if your corpus fits in the model's context, and only stays cheap if you reuse the same prompt enough to amortize caching.</p></details>
       </div>
 

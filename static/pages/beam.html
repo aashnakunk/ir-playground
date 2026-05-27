@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Beam search — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .seq { display:inline-block; padding:2px 8px; margin:2px; border:1px solid var(--line); border-radius:4px; background:var(--panel-2); font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+    .seq.kept { background:rgba(110,231,183,0.18); border-color:var(--good); }
+    .seq.pruned { background:rgba(252,165,165,0.12); border-color:var(--warn); color:var(--ink-dim); }
+    .seq.best { background:var(--accent); color:#111; border-color:var(--accent); font-weight:700; }
+    .step-block { background:#11141a; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid var(--line); }
+    .step-block h4 { margin:0 0 6px 0; font-size:13px; color:var(--accent); }
+    .expansion { font-size:11px; color:var(--ink-dim); margin:4px 0; font-family:ui-monospace,Menlo,monospace; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>Beam search</h1><h2>How LLMs pick their next word. Keep the top-k partial sentences, expand each, prune to top-k again.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Drag the <strong>beam width</strong> slider and re-run. Width 1 = greedy (just pick the most likely next word each step). Width 5 = explore 5 candidate sentences in parallel.</li>
+          <li>Each step shows every beam being expanded, all candidates considered, then which were kept vs pruned.</li>
+          <li>Notice: at width 1 you can get stuck on a locally good first word that leads to a bad sentence. Higher widths let you recover.</li>
+          <li>The final winning sequence is highlighted at the top.</li>
+        </ol>
+        <div class="analogy"><strong>Think of it like:</strong> writing a sentence. Brainstorm 3 candidate next words. Continue each as its own draft. After a few words, pick the 3 best drafts, drop the rest. Repeat. You'd never get the best sentence by just always picking the most obvious next word.</div>
+        <details><summary>where this shows up in modern AI</summary><p>Every LLM uses some form of next-token sampling — beam search (or its variants like nucleus / top-p sampling) is the bookkeeping that decides which sequences to keep alive. Higher beam width = better text quality but slower generation. Production LLMs typically use beam width 1 (greedy) with temperature/top-p sampling for speed.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>controls</h3>
+        <label class="muted">beam width: <input type="range" id="bw" min="1" max="5" step="1" value="3" /> <span id="bwv">3</span></label>
+        <label class="muted" style="margin-left:14px;">max steps: <input type="range" id="ms" min="2" max="5" step="1" value="5" /> <span id="msv">5</span></label>
+        <button id="run" type="button" style="margin-left:14px;">run</button>
+      </div>
+
+      <div class="panel" id="winner-panel" style="display:none;">
+        <h3>winning sequence</h3>
+        <div id="winner"></div>
+      </div>
+
+      <div class="panel">
+        <h3>per-step expansion</h3>
+        <div id="steps"></div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let data = null;
+    window.JazzbotView = { page:"beam", state: () => data ? ({
+      page:"beam", beam_width: data.beam_width, max_steps: data.max_steps,
+      winner: data.best, num_steps: data.steps.length,
+      last_step_kept: data.steps[data.steps.length-1]?.kept
+    }) : { page:"beam" } };
+
+    function seqHTML(seq, logp, cls=""){
+      const txt = seq.slice(1).join(" "); // drop <s>
+      return `<span class="seq ${cls}">${txt || "(start)"} <small style="color:var(--ink-dim);">${logp.toFixed(2)}</small></span>`;
+    }
+
+    async function run(){
+      const bw = +document.getElementById("bw").value, ms = +document.getElementById("ms").value;
+      data = await fetch(`/api/beam/search?beam_width=${bw}&max_steps=${ms}`).then(r=>r.json());
+      render();
+    }
+    function render(){
+      const winnerEl = document.getElementById("winner");
+      if (data.best){
+        document.getElementById("winner-panel").style.display = "block";
+        winnerEl.innerHTML = seqHTML(data.best.seq, data.best.logp, "best");
+      }
+      const stepsEl = document.getElementById("steps"); stepsEl.innerHTML = "";
+      data.steps.forEach(s => {
+        const exps = s.expansions.map(b => {
+          const children = b.expansions.map(c => `<span class="muted">→ ${c.token} (p=${c.p}, cum=${c.logp_after})</span>`).join(" ");
+          return `<div class="expansion">from ${seqHTML(b.seq, b.logp)}: ${children}</div>`;
+        }).join("");
+        const kept = s.kept.map(k => seqHTML(k.seq, k.logp, "kept")).join("");
+        const pruned = s.pruned.map(k => seqHTML(k.seq, k.logp, "pruned")).join("");
+        stepsEl.insertAdjacentHTML("beforeend", `
+          <div class="step-block">
+            <h4>step ${s.step}: ${s.reason}</h4>
+            ${exps}
+            <div style="margin-top:6px;"><strong style="color:var(--good); font-size:12px;">kept (${s.kept.length}):</strong> ${kept}</div>
+            ${pruned ? `<div style="margin-top:4px;"><strong style="color:var(--warn); font-size:12px;">pruned (${s.pruned.length}):</strong> ${pruned}</div>` : ""}
+          </div>
+        `);
+      });
+    }
+    document.querySelectorAll("input[type=range]").forEach(i => i.addEventListener("input", () => {
+      document.getElementById(i.id+"v").textContent = i.value;
+    }));
+    document.getElementById("run").addEventListener("click", run);
+    run();
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

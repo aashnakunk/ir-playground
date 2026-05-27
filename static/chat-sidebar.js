@@ -16,11 +16,17 @@
     <div class="log" id="chat-log">
       <div class="msg assistant">
         <div class="who">tutor</div>
-        Ask me anything about what's on your screen. I can see your current query, results, and parameters.
+        Ask me anything about what's on your screen. I can see your current query, results, and parameters. Try the quick-ask buttons below.
       </div>
     </div>
+    <div class="pills" id="chat-pills">
+      <button class="pill" type="button" data-msg="Explain what's on this page using a simple everyday analogy, no jargon."><span class="spark">✦</span> analogy</button>
+      <button class="pill" type="button" data-msg="Explain what's happening on this page like I'm 5 years old."><span class="spark">✦</span> ELI5</button>
+      <button class="pill" type="button" data-msg="Give me a concrete real-world example of where this technique is used in production."><span class="spark">✦</span> real example</button>
+      <button class="pill" type="button" data-msg="Why should I care about this technique? When would I actually use it in a real AI system?"><span class="spark">✦</span> why this matters</button>
+    </div>
     <form class="composer" id="chat-form">
-      <textarea id="chat-input" placeholder="why did doc #7 win?" rows="2"></textarea>
+      <textarea id="chat-input" placeholder="ask anything about what's on screen..." rows="2"></textarea>
       <button type="submit">send</button>
     </form>
   `;
@@ -82,5 +88,12 @@
       e.preventDefault();
       form.requestSubmit();
     }
+  });
+
+  root.querySelectorAll(".pill").forEach((b) => {
+    b.addEventListener("click", () => {
+      input.value = b.dataset.msg;
+      form.requestSubmit();
+    });
   });
 })();

@@ -45,6 +45,7 @@
           <li>Drag <strong>efSearch</strong> down to 2 and search again. Way fewer visits — but it might miss the best doc. <em>Speed vs accuracy</em>.</li>
           <li>Bump <strong>M</strong> up to 16, click <strong>rebuild</strong>. Denser graph, better recall, more memory.</li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> a subway map for finding the nearest coffee shop. You don't walk every street — you take the long-distance trains (top layers) to roughly the right neighborhood, then switch to local lines (lower layers) for fine-grained search.</div>
         <details><summary>why a layered graph?</summary><p>If you checked every doc, semantic search would be slow with millions of docs. HNSW pre-builds a graph where each node knows its closest neighbors. To search, you start at the top (sparse, long-range links), greedily walk toward your query, then drop down a layer and repeat. You only check a few dozen nodes out of millions.</p></details>
       </div>
 

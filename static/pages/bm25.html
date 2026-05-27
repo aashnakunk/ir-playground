@@ -27,6 +27,7 @@
           <li>Try a query with one very rare word — even a short doc with just one match can shoot to the top.</li>
           <li>Click a result and ask the tutor: <em>"how is BM25 different from TF-IDF?"</em></li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> same word-counting idea as TF-IDF, but fair to short messages. A 1-word text saying "pizza!" shouldn't automatically beat a meaty paragraph that's actually about pizza, and the 50th "pizza" in a doc should help way less than the 2nd.</div>
         <details><summary>what's BM25 doing differently?</summary><p>Two upgrades over TF-IDF: (1) <strong>saturation</strong> — the 50th time a word appears in a doc helps way less than the 2nd; (2) <strong>length normalization</strong> — long docs don't automatically win just because they have more chances to contain your words. Both are tuned by the <span class="kbd">k1</span> and <span class="kbd">b</span> knobs.</p></details>
       </div>
 

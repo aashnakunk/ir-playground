@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>MCTS — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    .step-controls button { padding:4px 10px; font-size:12px; }
+    .summary-row { display:grid; grid-template-columns: 60px 1fr 80px 80px; gap:8px; padding:4px 8px; border-bottom:1px solid var(--line); font-size:12px; font-family:ui-monospace,Menlo,monospace; }
+    .summary-row.win { background: rgba(110,231,183,0.10); }
+    .log-row { padding:2px 4px; font-size:11px; font-family:ui-monospace,Menlo,monospace; }
+    .log-row.select { color: var(--accent); }
+    .log-row.rollout { color: var(--accent-2); }
+    .log-row.backprop { color: var(--good); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>MCTS</h1><h2>Monte Carlo Tree Search. Run random rollouts, count wins, prefer paths that paid off.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>The tree has 3 root actions, each branching out 3-deep. Hidden rewards are at the leaves.</li>
+          <li>Click <strong>run</strong>, then step through iterations. Each iteration does <strong>select</strong> (descend by UCB) → <strong>rollout</strong> (random play to a leaf) → <strong>backprop</strong> (update visit counts and value sums).</li>
+          <li>Watch the per-node visit count and average value evolve. Nodes that get more visits are the ones the algorithm is converging on.</li>
+          <li>The "root action summary" at the bottom shows the best root choice so far.</li>
+        </ol>
+        <div class="analogy"><strong>Think of it like:</strong> deciding which restaurant to try. You can't know how good each is without going — so you randomly try meals, remember which restaurants kept being good, and over time go back to those more often. UCB is the rule: "prefer good restaurants, but also occasionally check ones you haven't visited much yet."</div>
+        <details><summary>where this shows up in modern AI</summary><p>AlphaGo, AlphaZero, MuZero. Modern LLM-agent papers like <strong>LATS</strong> (Language Agent Tree Search) and <strong>Tree of Thoughts</strong> with value heads use MCTS variants to plan over candidate next actions. Powerful when individual rollouts are cheap and you have a value/reward signal.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>controls</h3>
+        <label class="muted">iterations: <input type="range" id="it" min="5" max="80" step="5" value="25" /> <span id="itv">25</span></label>
+        <label class="muted" style="margin-left:14px;">seed: <input type="number" id="seed" value="7" style="width:60px;" /></label>
+        <button id="run" type="button" style="margin-left:14px;">run</button>
+        <div class="step-controls" style="margin-top:12px; display:none;" id="ctrls">
+          <button id="first">⏮</button>
+          <button id="prev">◀ prev iter</button>
+          <button id="next">next iter ▶</button>
+          <button id="last">⏭</button>
+          <span class="muted" id="counter"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:14px;">
+          <div>
+            <div class="muted" style="font-size:11px;">tree (node size = visits; brightness = avg value)</div>
+            <div id="tree"></div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:11px;">this iteration's actions</div>
+            <div id="log" style="max-height:240px; overflow-y:auto; border:1px solid var(--line); border-radius:6px; padding:6px;"></div>
+            <div class="muted" style="font-size:11px; margin-top:12px;">root action summary (current best)</div>
+            <div id="summary"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let data = null, iter = 0;
+    window.JazzbotView = { page:"mcts", state: () => data ? ({
+      page:"mcts", iterations: data.iterations, current_iter: iter+1,
+      best_root_actions: data.root_action_summary
+    }) : { page:"mcts" } };
+
+    document.getElementById("it").addEventListener("input", e => document.getElementById("itv").textContent = e.target.value);
+
+    async function run(){
+      const it = +document.getElementById("it").value, seed = +document.getElementById("seed").value;
+      data = await fetch(`/api/mcts/run?iterations=${it}&seed=${seed}`).then(r=>r.json());
+      iter = 0;
+      document.getElementById("ctrls").style.display = "flex";
+      show(0);
+    }
+    function show(i){
+      iter = Math.max(0, Math.min(data.log_per_iter.length-1, i));
+      const it = data.log_per_iter[iter];
+      drawTree(it.snapshot);
+      const log = document.getElementById("log"); log.innerHTML = "";
+      it.log.forEach(e => {
+        const row = document.createElement("div");
+        row.className = "log-row " + e.action;
+        let txt = `[${e.action}] `;
+        if (e.action === "select" || e.action === "descend") txt += `${e.from} → ${e.to}: ${e.reason}`;
+        else if (e.action === "rollout") txt += `from node ${e.from}, leaf ${e.leaf}, reward ${e.reward}`;
+        else if (e.action === "backprop") txt += `update path (${e.chain.length} nodes) with reward ${e.reward}`;
+        else txt += JSON.stringify(e);
+        row.textContent = txt;
+        log.appendChild(row);
+      });
+      const sum = document.getElementById("summary"); sum.innerHTML = "";
+      // summary uses the LATEST snapshot, not the snapshot at this iteration
+      const latest = data.log_per_iter[data.log_per_iter.length-1].snapshot;
+      const rootChildren = latest.filter(n => n.depth === 1).sort((a,b) => -(a.avg - b.avg));
+      rootChildren.forEach((n,i) => {
+        sum.insertAdjacentHTML("beforeend", `<div class="summary-row ${i===0?'win':''}"><div>action ${n.action}</div><div>node ${n.id}</div><div>visits ${n.visits}</div><div>avg ${n.avg.toFixed(3)}</div></div>`);
+      });
+      document.getElementById("counter").textContent = `iteration ${iter+1} / ${data.log_per_iter.length}`;
+    }
+    function drawTree(snap){
+      d3.select("#tree").html("");
+      const W=720, H=460;
+      const svg = d3.select("#tree").append("svg").attr("width", W).attr("height", H)
+        .style("background","#11141a").style("border","1px solid var(--line)").style("border-radius","8px");
+      // layout by depth
+      const byDepth = {};
+      snap.forEach(n => { (byDepth[n.depth] ||= []).push(n); });
+      const depths = Object.keys(byDepth).map(Number).sort();
+      const yScale = d => 30 + d * 130;
+      const positions = {};
+      depths.forEach(d => {
+        const row = byDepth[d];
+        row.forEach((n,i) => { positions[n.id] = {x: 20 + (i+0.5) * (W-40)/row.length, y: yScale(d)}; });
+      });
+      const maxVisits = Math.max(...snap.map(n=>n.visits), 1);
+      const color = d3.scaleSequential(d3.interpolateYlOrRd).domain([0, 1]);
+
+      snap.forEach(n => {
+        if (n.parent !== null){
+          const p = positions[n.parent], me = positions[n.id];
+          svg.append("line").attr("x1",p.x).attr("y1",p.y).attr("x2",me.x).attr("y2",me.y)
+            .attr("stroke", n.visits > 0 ? "#9aa3b2" : "#2a3140").attr("stroke-width", n.visits > 0 ? 1.5 : 0.5);
+        }
+      });
+      snap.forEach(n => {
+        const pos = positions[n.id];
+        const r = 5 + 12 * (n.visits / maxVisits);
+        svg.append("circle").attr("cx", pos.x).attr("cy", pos.y).attr("r", r)
+          .attr("fill", n.visits ? color(n.avg) : "#20252f")
+          .attr("stroke", "#3a4252")
+          .append("title").text(`node ${n.id} · depth ${n.depth} · visits ${n.visits} · avg ${n.avg}`);
+        if (n.visits > 0){
+          svg.append("text").attr("x", pos.x).attr("y", pos.y+3).attr("text-anchor","middle")
+            .attr("fill","#111").attr("font-size", 9).attr("font-weight", "700").text(n.visits);
+        }
+      });
+    }
+
+    document.getElementById("run").addEventListener("click", run);
+    document.getElementById("first").addEventListener("click", ()=>show(0));
+    document.getElementById("prev").addEventListener("click", ()=>show(iter-1));
+    document.getElementById("next").addEventListener("click", ()=>show(iter+1));
+    document.getElementById("last").addEventListener("click", ()=>show(data.log_per_iter.length-1));
+    run();
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

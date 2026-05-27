@@ -23,6 +23,7 @@
           <li>Scroll to the heatmap at the bottom. Each row is a doc, each column a word. Bright cells = words that strongly identify a doc.</li>
           <li>Click a result, then ask the tutor (right): <em>"why did this doc win?"</em></li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> searching your group chat for "pizza." A message that says pizza a lot is probably about pizza — but if your friends say pizza in every conversation, the word stops being a clue. TF-IDF rewards words that are <em>frequent here</em> but <em>rare overall</em>.</div>
         <details><summary>what's TF-IDF really doing?</summary><p>It multiplies how often a word appears in <strong>this</strong> doc (TF) by how rare that word is across <strong>all</strong> docs (IDF). High score = this doc has lots of words that are uncommon elsewhere — which usually means it's actually about your topic.</p></details>
       </div>
 

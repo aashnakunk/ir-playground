@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BFS / DFS — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <style>
+    .seg button { padding:4px 12px; font-size:12px; background:var(--panel-2); color:var(--ink-dim); border:1px solid var(--line); }
+    .seg button.on { background:var(--accent); color:#111; border-color:var(--accent); }
+    .frontier-cell { display:inline-block; padding:3px 9px; margin:2px; background:var(--panel-2); border:1px solid var(--line); border-radius:4px; font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+    .frontier-cell.first { background:var(--accent); color:#111; border-color:var(--accent); font-weight:700; }
+    .step-controls button { padding:4px 10px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>BFS / DFS</h1><h2>Two ways an AI agent explores a tree of possible next steps. Same graph; different order.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Click <strong>BFS</strong> or <strong>DFS</strong> to choose the algorithm, then <strong>run</strong>.</li>
+          <li>Watch the frontier panel. BFS uses a <strong>queue</strong> (first in, first out — explore level-by-level). DFS uses a <strong>stack</strong> (last in, first out — dive deep).</li>
+          <li>Step through with prev/next. Notice BFS finds the shortest-path goal first; DFS might wander deep on one branch before backing up.</li>
+          <li>Click any log row to jump to that step.</li>
+        </ol>
+        <div class="analogy"><strong>Think of it like:</strong> looking for your keys. BFS = check every spot 1 foot away first, then 2 feet, then 3. DFS = pick a corner, search it top to bottom, then move to the next corner.</div>
+        <details><summary>where this shows up in modern AI</summary><p><strong>Tree of Thoughts</strong> reasoning explores candidate "next steps" as a search tree — BFS-style ToT keeps multiple thoughts alive per level, DFS-style ToT commits to one branch and backtracks if it fails. <strong>ReAct</strong> agents do depth-first action chains.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>controls</h3>
+        <div class="seg" style="display:inline-flex; gap:0;">
+          <button data-algo="bfs" id="btn-bfs" class="on">BFS</button>
+          <button data-algo="dfs" id="btn-dfs">DFS</button>
+        </div>
+        <button id="run" type="button" style="margin-left:14px;">run</button>
+        <span class="muted" style="margin-left:14px;">start: <strong>A</strong> · goal: <strong>J</strong></span>
+        <div class="step-controls" style="margin-top:12px; display:none;" id="ctrls">
+          <button id="first">⏮</button>
+          <button id="prev">◀ prev</button>
+          <button id="next">next ▶</button>
+          <button id="last">⏭</button>
+          <span class="muted" id="counter"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:14px;">
+          <div>
+            <div class="muted" style="font-size:11px;">graph (orange = current, green = visited, blue = goal)</div>
+            <div id="graph"></div>
+          </div>
+          <div>
+            <div class="muted" style="font-size:11px;">frontier <span id="frontier-label"></span> (first = about to expand)</div>
+            <div id="frontier" style="min-height:32px; padding:6px; border:1px solid var(--line); border-radius:6px;"></div>
+            <div class="muted" style="font-size:11px; margin-top:12px;">log (click a row)</div>
+            <div id="log" style="max-height:280px; overflow-y:auto; font-family:ui-monospace,Menlo,monospace; font-size:11px; border:1px solid var(--line); border-radius:6px; padding:6px;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let algo = "bfs", data = null, step = 0;
+    window.JazzbotView = { page:"bfs-dfs", state: () => data ? ({
+      page:"bfs-dfs", algo: data.algo, start: data.start, goal: data.goal,
+      step: step+1, total_steps: data.events.length,
+      current_event: data.events[step]
+    }) : { page:"bfs-dfs" } };
+
+    document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", e => {
+      algo = b.dataset.algo;
+      document.querySelectorAll(".seg button").forEach(x => x.classList.toggle("on", x===b));
+    }));
+
+    async function run(){
+      data = await fetch(`/api/graph/search?algo=${algo}`).then(r=>r.json());
+      step = 0;
+      document.getElementById("frontier-label").textContent = algo === "bfs" ? "(queue, FIFO)" : "(stack, LIFO)";
+      document.getElementById("ctrls").style.display = "flex";
+      renderLog();
+      draw(); show(0);
+    }
+    function renderLog(){
+      const el = document.getElementById("log"); el.innerHTML = "";
+      data.events.forEach((ev,i)=>{
+        const row = document.createElement("div");
+        row.textContent = `${String(i+1).padStart(2)} ${ev.event.padEnd(8)} ${(ev.node||"-").padEnd(2)}  ${ev.reason}`;
+        row.style.cursor = "pointer";
+        row.addEventListener("click", ()=>show(i));
+        el.appendChild(row);
+      });
+    }
+    const W=720, H=460;
+    let svg;
+    function draw(){
+      d3.select("#graph").html("");
+      svg = d3.select("#graph").append("svg").attr("width",W).attr("height",H)
+        .style("background","#11141a").style("border","1px solid var(--line)").style("border-radius","8px");
+      const g = data.graph;
+      // edges
+      svg.append("g").selectAll("line").data(g.edges).enter().append("line")
+        .attr("x1", e => g.nodes.find(n=>n.id===e.a).x).attr("y1", e => g.nodes.find(n=>n.id===e.a).y)
+        .attr("x2", e => g.nodes.find(n=>n.id===e.b).x).attr("y2", e => g.nodes.find(n=>n.id===e.b).y)
+        .attr("stroke","#3a4252").attr("stroke-width",1.5);
+      svg.append("g").selectAll("circle").data(g.nodes).enter().append("circle")
+        .attr("class","gnode")
+        .attr("cx",n=>n.x).attr("cy",n=>n.y).attr("r",16)
+        .attr("fill","#20252f").attr("stroke","#3a4252").attr("stroke-width",1.5);
+      svg.append("g").selectAll("text.id").data(g.nodes).enter().append("text").attr("class","id")
+        .attr("x",n=>n.x).attr("y",n=>n.y+4).attr("text-anchor","middle").attr("fill","#e7e9ee").attr("font-weight","700").attr("font-size",12).text(n=>n.id);
+      svg.append("g").selectAll("text.lbl").data(g.nodes).enter().append("text").attr("class","lbl")
+        .attr("x",n=>n.x).attr("y",n=>n.y+34).attr("text-anchor","middle").attr("fill","#9aa3b2").attr("font-size",10).text(n=>n.label);
+    }
+    function show(i){
+      step = Math.max(0, Math.min(data.events.length-1, i));
+      const ev = data.events[step];
+      const visitedSet = new Set(ev.visited || []);
+      const frontierSet = new Set(ev.frontier || []);
+      svg.selectAll("circle.gnode")
+        .attr("fill", n => {
+          if (n.id === ev.node) return "#f5b14a";
+          if (n.id === data.goal) return "#6ec1ff";
+          if (visitedSet.has(n.id)) return "#6ee7b7";
+          if (frontierSet.has(n.id)) return "#3a4252";
+          return "#20252f";
+        })
+        .attr("stroke", n => n.id === ev.node ? "#fff" : "#3a4252");
+      const f = document.getElementById("frontier"); f.innerHTML = "";
+      (ev.frontier||[]).forEach((n,idx)=> f.insertAdjacentHTML("beforeend", `<span class="frontier-cell ${idx===0?'first':''}">${n}</span>`));
+      document.querySelectorAll("#log div").forEach((d,idx)=> d.style.background = idx===step ? "rgba(245,177,74,0.18)" : "");
+      document.getElementById("counter").textContent = `step ${step+1} / ${data.events.length} · ${ev.reason}`;
+      if (ev.path){
+        document.getElementById("counter").textContent += `  ·  path: ${ev.path.join(" → ")}`;
+      }
+    }
+    document.getElementById("run").addEventListener("click", run);
+    document.getElementById("first").addEventListener("click", ()=>show(0));
+    document.getElementById("prev").addEventListener("click", ()=>show(step-1));
+    document.getElementById("next").addEventListener("click", ()=>show(step+1));
+    document.getElementById("last").addEventListener("click", ()=>show(data.events.length-1));
+    run();
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

@@ -32,6 +32,7 @@
           <li>Scroll to the <strong>inverted index</strong>: for every word, the list of doc-ids that contain it. This is the data structure that makes keyword search fast.</li>
           <li>Click a term in the index to insert it into the query.</li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> Spotify filters. <span class="kbd">rock AND NOT live</span>, <span class="kbd">jazz OR latin</span>. No "best match" — songs either pass the filter or don't. Old-school, but still the right tool when you need hard rules.</div>
         <details><summary>what's the inverted index doing?</summary><p>Instead of scanning every doc for every query, we precompute a map: <em>word → list of doc-ids</em>. Now <span class="kbd">a AND b</span> is just a set intersection of two short lists. BM25 and TF-IDF use the same structure under the hood — they just add scoring on top of these postings.</p></details>
       </div>
 

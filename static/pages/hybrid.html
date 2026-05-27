@@ -22,6 +22,7 @@
           <li>Notice the small print under each fused result — it shows where the doc ranked in BM25 and Semantic separately.</li>
           <li>Ask the tutor: <em>"which docs were ranked high in one but not the other?"</em></li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> asking two people for restaurant recs — a friend who knows the menu by exact name, and a friend who "gets your vibe." Then pooling their top picks. Docs that show up high on either list bubble up.</div>
         <details><summary>what's RRF?</summary><p>Reciprocal Rank Fusion. For each doc, take 1/(60+rank) from each list and add them up. Doesn't care about raw scores — just ranks — which is why it works even when the two systems' scores aren't on the same scale.</p></details>
       </div>
 

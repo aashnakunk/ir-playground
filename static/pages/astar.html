@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>A* — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .step-controls button { padding:4px 10px; font-size:12px; }
+    .cellinfo table { width:100%; font-size:11px; font-family:ui-monospace,Menlo,monospace; }
+    .cellinfo td { padding:1px 6px; border-bottom:1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>A*</h1><h2>BFS with a compass. It estimates how close each cell is to the goal and prefers cells that point that way.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>The grid has walls (dark) and a start (green) and goal (blue). Click <strong>run</strong>.</li>
+          <li>Step through. Each cell explored is labelled with <span class="kbd">f = g + h</span>:<br><strong>g</strong> = steps from start so far · <strong>h</strong> = Manhattan distance to goal · <strong>f</strong> = total estimated cost.</li>
+          <li>Try the <strong>heuristic weight</strong> slider. <span class="kbd">w=0</span> = pure Dijkstra (ignores goal direction). <span class="kbd">w=1</span> = standard A*. <span class="kbd">w&gt;1</span> = greedy (fast but possibly suboptimal).</li>
+          <li>Watch the open set — at every step A* pops the cell with the smallest <span class="kbd">f</span>.</li>
+        </ol>
+        <div class="analogy"><strong>Think of it like:</strong> GPS routing. Not "what's the closest road I haven't tried" but "what's the closest road that's also pointing me toward my destination." The estimate (h) keeps it from wandering.</div>
+        <details><summary>where this shows up in modern AI</summary><p>Some LLM agents use A*-style search over a tree of partial plans, where <span class="kbd">g</span> = cost so far and <span class="kbd">h</span> = an LLM-estimated remaining cost. Robotics + game AI still use it heavily. The <em>idea</em> — "use a cheap estimate to prioritize" — is everywhere in production search.</p></details>
+      </div>
+
+      <div class="panel">
+        <h3>controls</h3>
+        <label class="muted">heuristic weight (h × <span id="wv">1.0</span>):
+          <input type="range" id="w" min="0" max="3" step="0.1" value="1" />
+        </label>
+        <button id="run" type="button" style="margin-left:14px;">run</button>
+        <div class="step-controls" style="margin-top:12px; display:none;" id="ctrls">
+          <button id="first">⏮</button>
+          <button id="prev">◀ prev</button>
+          <button id="next">next ▶</button>
+          <button id="last">⏭</button>
+          <span class="muted" id="counter"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:14px;">
+          <div id="grid"></div>
+          <div>
+            <div class="muted" style="font-size:11px;">open set (sorted by f, top 6)</div>
+            <div class="cellinfo"><table id="open"></table></div>
+            <div class="muted" style="font-size:11px; margin-top:12px;">log (click a row)</div>
+            <div id="log" style="max-height:240px; overflow-y:auto; font-family:ui-monospace,Menlo,monospace; font-size:11px; border:1px solid var(--line); border-radius:6px; padding:6px;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let data = null, step = 0;
+    window.JazzbotView = { page:"astar", state: () => data ? ({
+      page:"astar", w: data.w, h: data.h, start: data.start, goal: data.goal,
+      heuristic_weight: data.heuristic_weight,
+      step: step+1, total_steps: data.events.length,
+      current_event: data.events[step]
+    }) : { page:"astar" } };
+
+    document.getElementById("w").addEventListener("input", e => {
+      document.getElementById("wv").textContent = (+e.target.value).toFixed(1);
+    });
+
+    async function run(){
+      const w = +document.getElementById("w").value;
+      data = await fetch(`/api/astar/search?w=${w}`).then(r=>r.json());
+      step = 0;
+      document.getElementById("ctrls").style.display = "flex";
+      renderLog(); show(0);
+    }
+    function renderLog(){
+      const el = document.getElementById("log"); el.innerHTML = "";
+      data.events.forEach((ev,i)=>{
+        const c = ev.current ? `[${ev.current.join(",")}]` : "-";
+        const f = ev.f !== undefined ? `f=${ev.f}` : "";
+        const row = document.createElement("div");
+        row.textContent = `${String(i+1).padStart(3)} ${ev.event.padEnd(8)} ${c.padEnd(8)} ${f.padEnd(10)} ${ev.reason}`;
+        row.style.cursor = "pointer";
+        row.addEventListener("click", ()=>show(i));
+        el.appendChild(row);
+      });
+    }
+    function show(i){
+      step = Math.max(0, Math.min(data.events.length-1, i));
+      const ev = data.events[step];
+      drawGrid(ev);
+      const tbody = document.getElementById("open"); tbody.innerHTML = "";
+      (ev.open||[]).forEach(c => tbody.insertAdjacentHTML("beforeend", `<tr><td>[${c.cell.join(",")}]</td><td>g=${c.g}</td><td>h=${c.h}</td><td>f=${c.f}</td></tr>`));
+      document.querySelectorAll("#log div").forEach((d,idx)=> d.style.background = idx===step ? "rgba(245,177,74,0.18)" : "");
+      document.getElementById("counter").textContent = `step ${step+1} / ${data.events.length} · ${ev.reason}`;
+    }
+    function drawGrid(ev){
+      const W = data.w, H = data.h;
+      const cell = 38;
+      d3.select("#grid").html("");
+      const svg = d3.select("#grid").append("svg").attr("width", W*cell+2).attr("height", H*cell+2)
+        .style("background","#11141a").style("border","1px solid var(--line)").style("border-radius","8px");
+
+      const wallSet = new Set(data.walls.map(c => c.join(",")));
+      const closedSet = new Set((ev.closed||[]).map(c => c.join(",")));
+      const openSet = new Set((ev.open||[]).map(c => c.cell.join(",")));
+      const pathSet = new Set((ev.path||[]).map(c => c.join(",")));
+      const cur = ev.current ? ev.current.join(",") : "";
+
+      for (let y=0; y<H; y++){
+        for (let x=0; x<W; x++){
+          const k = `${x},${y}`;
+          let fill = "#1a1d24";
+          if (wallSet.has(k)) fill = "#3a4252";
+          else if (pathSet.has(k)) fill = "#6ec1ff";
+          else if (cur === k) fill = "#f5b14a";
+          else if (closedSet.has(k)) fill = "rgba(110,231,183,0.30)";
+          else if (openSet.has(k)) fill = "rgba(245,177,74,0.20)";
+          if (k === data.start.join(",")) fill = "#6ee7b7";
+          if (k === data.goal.join(",")) fill = "#6ec1ff";
+          svg.append("rect").attr("x", x*cell+1).attr("y", y*cell+1).attr("width", cell-2).attr("height", cell-2)
+            .attr("fill", fill).attr("stroke", "#2a3140");
+        }
+      }
+      // overlay g/h/f on closed/open/current
+      const labelled = new Map();
+      (ev.open||[]).forEach(c => labelled.set(c.cell.join(","), c));
+      if (ev.event === "visit" || ev.event === "consider"){
+        labelled.set(ev.current.join(","), {g: ev.g, h: ev.h, f: ev.f});
+      }
+      labelled.forEach((v, k) => {
+        const [x, y] = k.split(",").map(Number);
+        svg.append("text").attr("x", x*cell+cell/2).attr("y", y*cell+14)
+          .attr("text-anchor","middle").attr("fill","#fff").attr("font-size",9).text(`f${v.f}`);
+        svg.append("text").attr("x", x*cell+cell/2).attr("y", y*cell+cell-6)
+          .attr("text-anchor","middle").attr("fill","#9aa3b2").attr("font-size",9).text(`g${v.g} h${v.h}`);
+      });
+    }
+
+    document.getElementById("run").addEventListener("click", run);
+    document.getElementById("first").addEventListener("click", ()=>show(0));
+    document.getElementById("prev").addEventListener("click", ()=>show(step-1));
+    document.getElementById("next").addEventListener("click", ()=>show(step+1));
+    document.getElementById("last").addEventListener("click", ()=>show(data.events.length-1));
+    run();
+  </script>
+  <script src="/static/theme.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

@@ -27,6 +27,7 @@
           <li><strong>Step 3: The answer</strong>, with <span class="kbd">[id]</span> citations pointing back to chunks.</li>
           <li>Ask something <strong>off-topic</strong> (e.g., "what's the weather?"). The model should say it doesn't know — because retrieval returned nothing useful.</li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> an open-book exam. The chatbot first looks up the relevant chapter, then answers using what it just read. Same model, but now grounded in real source text instead of vibes.</div>
         <details><summary>why bother retrieving?</summary><p>An LLM by itself doesn't know your private data, and can hallucinate even on public facts. RAG plugs the gap: look up a few relevant chunks, hand them to the model with the question, and ask it to answer using only those. The answer is grounded in real source text you can audit.</p></details>
       </div>
 

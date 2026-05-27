@@ -28,6 +28,7 @@
           <li>The right column shows the MMR-reordered list. Compare titles — MMR usually swaps in different angles on the topic.</li>
           <li>Scroll to "selection steps" to see, at each pick, the candidates considered, their relevance, and the diversity penalty.</li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> building a playlist. Even if your top 5 songs are all by one artist, you'd want some variety. MMR is "great track, but how different is it from what I already picked?"</div>
         <details><summary>the MMR formula</summary><p><span class="kbd">MMR(d) = λ · sim(query, d) − (1−λ) · max sim(d, picked)</span>. We iteratively pick the doc with the highest MMR until we have top-k. The penalty is the doc's similarity to whichever already-picked doc it resembles most.</p></details>
       </div>
 

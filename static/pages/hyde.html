@@ -27,6 +27,7 @@
           <li><strong>Right:</strong> HyDE results — what you get by embedding that hypothetical answer instead.</li>
           <li>For terse questions, HyDE often surfaces a better top-1. For already-rich queries, plain semantic wins.</li>
         </ol>
+        <div class="analogy"><strong>Think of it like:</strong> Googling. If you search "why does X happen" you get junk. If you search the answer you'd expect ("X happens because…") you get the right pages. HyDE asks the LLM to write that fake answer for you first.</div>
         <details><summary>why does this work?</summary><p>Question embeddings and answer embeddings live in slightly different regions of the vector space. A short question doesn't look much like the long, factual passages in the corpus. The hypothetical answer <em>does</em> — even if it's hallucinated. So embedding-distance does a better job of finding the right passage.</p></details>
       </div>
 
