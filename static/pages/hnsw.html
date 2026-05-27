@@ -20,8 +20,20 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>HNSW</h1><h2>A layered proximity graph for approximate nearest neighbor search.</h2></div>
+        <div><h1>HNSW</h1><h2>The trick that makes semantic search <em>fast</em> when you have millions of docs.</h2></div>
         <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>The map shows every doc as a node. Lines are the "I'm a neighbor of yours" links HNSW built.</li>
+          <li>Click <strong>layer 1</strong> at the top of the graph — way fewer nodes. Higher layers are like express lanes; they let search skip across the map quickly.</li>
+          <li>Type a query and click <strong>search &amp; animate</strong>. Watch nodes light up in the order they were visited — the search hops down from the top layer to layer 0.</li>
+          <li>Drag <strong>efSearch</strong> down to 2 and search again. Way fewer visits — but it might miss the best doc. <em>Speed vs accuracy</em>.</li>
+          <li>Bump <strong>M</strong> up to 16, click <strong>rebuild</strong>. Denser graph, better recall, more memory.</li>
+        </ol>
+        <details><summary>why a layered graph?</summary><p>If you checked every doc, semantic search would be slow with millions of docs. HNSW pre-builds a graph where each node knows its closest neighbors. To search, you start at the top (sparse, long-range links), greedily walk toward your query, then drop down a layer and repeat. You only check a few dozen nodes out of millions.</p></details>
       </div>
 
       <div class="panel">

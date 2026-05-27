@@ -9,8 +9,20 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>Hybrid search</h1><h2>BM25 + semantic, fused with Reciprocal Rank Fusion.</h2></div>
+        <div><h1>Hybrid search</h1><h2>Combine keyword search and meaning search. Usually beats either one alone.</h2></div>
         <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Search something with a <strong>specific name</strong> (a person, a place, a dish). Keyword search (BM25) usually wins.</li>
+          <li>Search something <strong>conceptual</strong> ("mood of late-night music", "tangy fermented stuff"). Meaning search (Semantic) usually wins.</li>
+          <li>The right column is the <strong>fused</strong> result. It picks docs that did well in <em>either</em> list.</li>
+          <li>Notice the small print under each fused result — it shows where the doc ranked in BM25 and Semantic separately.</li>
+          <li>Ask the tutor: <em>"which docs were ranked high in one but not the other?"</em></li>
+        </ol>
+        <details><summary>what's RRF?</summary><p>Reciprocal Rank Fusion. For each doc, take 1/(60+rank) from each list and add them up. Doesn't care about raw scores — just ranks — which is why it works even when the two systems' scores aren't on the same scale.</p></details>
       </div>
 
       <div class="panel">

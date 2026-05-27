@@ -14,8 +14,20 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>CAG</h1><h2>Stuff the whole corpus into a cached system prompt. No retrieval.</h2></div>
+        <div><h1>CAG</h1><h2>Skip the lookup. Hand the model the <em>whole</em> corpus and let it find the answer. Cached so it's not slow.</h2></div>
         <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Ask a question. Notice the prompt size at the top (Step 1) — the <strong>entire corpus</strong> was sent.</li>
+          <li>Look at the <strong>cached</strong> number under "cost &amp; latency". On the first call it's <strong>0</strong>.</li>
+          <li>Ask another question. The cached number jumps — OpenAI noticed it saw the same giant system prompt before and bills it at a discount.</li>
+          <li>Compare to the RAG page: that one sent ~250 prompt tokens. This sends ~1,800. Without caching, CAG would be much pricier.</li>
+          <li>Ask the tutor: <em>"when would RAG be better than CAG?"</em></li>
+        </ol>
+        <details><summary>why use CAG at all?</summary><p>RAG can fail when the best chunk wasn't retrieved (or the question needs context spread across many chunks). CAG sidesteps that by always giving the model everything. The tradeoff is cost and context window: CAG only works if your corpus fits in the model's context, and only stays cheap if you reuse the same prompt enough to amortize caching.</p></details>
       </div>
 
       <div class="panel">

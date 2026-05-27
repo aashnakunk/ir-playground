@@ -10,8 +10,20 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>Semantic search</h1><h2>Embeddings, cosine similarity, and a 2D map of meaning.</h2></div>
+        <div><h1>Semantic search</h1><h2>Search by <em>meaning</em>, not exact words. See where your query lands on a map of ideas.</h2></div>
         <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Type a query in <strong>full sentences</strong>, the way you'd ask a friend. The model understands meaning, not just keywords.</li>
+          <li>The ★ on the map is your query. The closest dots are the most similar docs by meaning. Top-k are ringed in orange.</li>
+          <li>Try a query that uses <strong>none of the exact words</strong> from any doc. Notice it still finds the right one — that's the magic.</li>
+          <li>Hover any dot on the map to see its title and similarity score.</li>
+          <li>Run the same query on the TF-IDF or BM25 page. Compare — semantic often finds docs keyword search missed.</li>
+        </ol>
+        <details><summary>what's actually happening?</summary><p>Each doc and your query are turned into a list of 1,536 numbers (an "embedding") by an OpenAI model. Similar meanings produce similar number-lists. Ranking = which list is most similar to your query's list, measured by <strong>cosine similarity</strong>. The 2D map is a flattened projection so you can see clusters.</p></details>
       </div>
 
       <div class="panel">

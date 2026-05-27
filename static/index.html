@@ -4,21 +4,14 @@
   <meta charset="utf-8" />
   <title>jazzbot — IR & RAG playground</title>
   <link rel="stylesheet" href="/static/common.css" />
-  <style>
-    .topics { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .topic { display:block; padding: 14px 16px; border:1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
-    .topic:hover { border-color: var(--accent); text-decoration: none; }
-    .topic h4 { margin: 0 0 4px 0; color: var(--accent); }
-    .topic p { margin: 0; color: var(--ink-dim); font-size: 13px; }
-  </style>
 </head>
 <body>
   <div class="layout">
     <main class="main">
       <div class="topbar">
         <div>
-          <h1>jazzbot</h1>
-          <h2>An interactive playground for IR & RAG, themed in jazz.</h2>
+          <h1>How does search actually work?</h1>
+          <h2>A hands-on tour of the seven techniques behind every search box and chatbot.</h2>
         </div>
         <nav>
           <a href="/pages/tfidf.html">tfidf</a>
@@ -31,22 +24,54 @@
         </nav>
       </div>
 
-      <div class="panel">
-        <h3>how this works</h3>
-        <p>Each page below explores one retrieval or generation technique using a small jazz corpus (~30 docs). Every page has a live visual and a sidebar tutor (OpenAI) that can see exactly what you're looking at — ask it <em>"why did doc #10 win?"</em> and it will reference real scores.</p>
+      <div class="hero">
+        <p class="big">When you type into a search box — Google, Spotify, ChatGPT — something has to decide which results to show. Sometimes it counts words. Sometimes it compares meanings. Sometimes it draws a graph. This site lets you <strong>watch each of those techniques run</strong> on a small example corpus, and ask a tutor questions about what you're seeing.</p>
+        <p class="muted">No background needed. Each page has a "Try this" guide. The sidebar on the right is a tutor (powered by OpenAI) that can see your screen — ask it anything.</p>
       </div>
 
       <div class="panel">
-        <h3>topics</h3>
-        <div class="topics">
-          <a class="topic" href="/pages/tfidf.html"><h4>TF-IDF</h4><p>Per-term contributions and a term×doc heatmap.</p></a>
-          <a class="topic" href="/pages/bm25.html"><h4>BM25</h4><p>TF-IDF with saturation and length normalization.</p></a>
-          <a class="topic" href="/pages/semantic.html"><h4>Semantic search</h4><p>Cosine over embeddings + 2D map of meaning.</p></a>
-          <a class="topic" href="/pages/hybrid.html"><h4>Hybrid (RRF)</h4><p>BM25 + semantic, fused without score calibration.</p></a>
-          <a class="topic" href="/pages/hnsw.html"><h4>HNSW</h4><p>Layered graph, search traversal, M / ef sliders.</p></a>
-          <a class="topic" href="/pages/rag.html"><h4>RAG</h4><p>Retrieve top-k → prompt → generate. Every step visible.</p></a>
-          <a class="topic" href="/pages/cag.html"><h4>CAG</h4><p>Full corpus in cached system prompt. Compare cost vs RAG.</p></a>
-        </div>
+        <h3>recommended path</h3>
+        <p class="muted" style="margin-top:0;">Each technique builds on the one before it. Go in order if it's your first time.</p>
+        <ol class="path">
+          <li>
+            <a href="/pages/tfidf.html">TF-IDF</a>
+            <span class="what">The original "count the words" search. A doc wins if it has lots of the rare words from your query.</span>
+          </li>
+          <li>
+            <a href="/pages/bm25.html">BM25</a>
+            <span class="what">Same idea, smarter math. Doesn't get fooled by very long or very short docs. Google used this for years.</span>
+          </li>
+          <li>
+            <a href="/pages/semantic.html">Semantic search</a>
+            <span class="what">Search by <em>meaning</em>, not exact words. Type "electric music in the 60s" and it finds the doc about jazz fusion even if those words aren't in it.</span>
+          </li>
+          <li>
+            <a href="/pages/hybrid.html">Hybrid search</a>
+            <span class="what">Combine keyword search and meaning search. Usually beats either one alone.</span>
+          </li>
+          <li>
+            <a href="/pages/hnsw.html">HNSW</a>
+            <span class="what">The trick that makes semantic search <em>fast</em> when you have millions of docs. A layered graph you can hop across.</span>
+          </li>
+          <li>
+            <a href="/pages/rag.html">RAG</a>
+            <span class="what">"Look it up first, then answer." How a chatbot grounds its answers in real docs instead of making things up.</span>
+          </li>
+          <li>
+            <a href="/pages/cag.html">CAG</a>
+            <span class="what">Skip the lookup — hand the chatbot the whole corpus and let it figure out what's relevant. Simpler, but costs more tokens.</span>
+          </li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h3>how to use this site</h3>
+        <ul style="padding-left: 20px;">
+          <li><strong>Type queries</strong> and watch the visuals update — that's the whole point.</li>
+          <li><strong>Hover the dotted underlined words</strong> for short definitions (try "IDF", "k1", "efSearch").</li>
+          <li><strong>Talk to the tutor</strong> in the sidebar — it can see what's on your screen. Ask "why did doc #7 win?" or "what would change if I increased M?"</li>
+          <li><strong>Compare pages.</strong> Run the same query through TF-IDF, BM25, and Semantic and notice how the rankings differ.</li>
+        </ul>
       </div>
     </main>
     <aside id="chat"></aside>

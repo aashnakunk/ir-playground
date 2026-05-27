@@ -14,8 +14,20 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>RAG</h1><h2>Retrieve top-k, paste into prompt, generate.</h2></div>
+        <div><h1>RAG</h1><h2>"Look it up first, then answer." How a chatbot grounds its replies in real docs instead of guessing.</h2></div>
         <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Ask a question about the corpus. Wait a few seconds — three things will appear.</li>
+          <li><strong>Step 1: Retrieved chunks.</strong> These are the few docs most similar to your question, found by semantic search.</li>
+          <li><strong>Step 2: The exact prompt sent to the model.</strong> Notice the chunks are literally pasted in. <em>That's all "RAG" is</em>: lookup + paste + ask.</li>
+          <li><strong>Step 3: The answer</strong>, with <span class="kbd">[id]</span> citations pointing back to chunks.</li>
+          <li>Ask something <strong>off-topic</strong> (e.g., "what's the weather?"). The model should say it doesn't know — because retrieval returned nothing useful.</li>
+        </ol>
+        <details><summary>why bother retrieving?</summary><p>An LLM by itself doesn't know your private data, and can hallucinate even on public facts. RAG plugs the gap: look up a few relevant chunks, hand them to the model with the question, and ask it to answer using only those. The answer is grounded in real source text you can audit.</p></details>
       </div>
 
       <div class="panel">

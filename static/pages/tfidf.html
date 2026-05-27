@@ -10,8 +10,20 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>TF-IDF</h1><h2>Term-weighting from first principles.</h2></div>
+        <div><h1>TF-IDF</h1><h2>How a computer figures out which words in your search actually matter.</h2></div>
         <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="guide">
+        <h3>try this</h3>
+        <ol>
+          <li>Type a search and hit <strong>search</strong>. The top results appear below.</li>
+          <li>Each result has a colored bar — each color is one word from your query. The wider the segment, the more that word mattered.</li>
+          <li>Look at the <strong>IDF</strong> values up top: common words (like "the" or the corpus topic itself) score low; rare words score high. <em>Rare = useful</em>.</li>
+          <li>Scroll to the heatmap at the bottom. Each row is a doc, each column a word. Bright cells = words that strongly identify a doc.</li>
+          <li>Click a result, then ask the tutor (right): <em>"why did this doc win?"</em></li>
+        </ol>
+        <details><summary>what's TF-IDF really doing?</summary><p>It multiplies how often a word appears in <strong>this</strong> doc (TF) by how rare that word is across <strong>all</strong> docs (IDF). High score = this doc has lots of words that are uncommon elsewhere — which usually means it's actually about your topic.</p></details>
       </div>
 
       <div class="panel">
