@@ -1,0 +1,12 @@
+{
+  "promptDelete": true,
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "Notes",
+  "attachmentFolderPath": "attachments",
+  "useMarkdownLinks": false,
+  "defaultViewMode": "preview",
+  "livePreview": true,
+  "showLineNumber": false,
+  "readableLineLength": true
+}
