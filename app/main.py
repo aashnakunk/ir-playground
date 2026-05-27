@@ -10,6 +10,7 @@ load_dotenv()
 
 from app import cag, chat, rag
 from app.corpus import load_corpus
+from app.theme import active as active_theme
 from app.retrievers import bm25 as bm25_retriever
 from app.retrievers import hnsw as hnsw_retriever
 from app.retrievers import hybrid as hybrid_retriever
@@ -29,6 +30,12 @@ def root():
 @app.get("/favicon.ico")
 def favicon():
     return Response(status_code=204)
+
+
+@app.get("/api/theme")
+def get_theme():
+    t = active_theme()
+    return {"corpus": t.corpus, "name": t.name, "tutor_role": t.tutor_role, "default_queries": t.default_queries}
 
 
 @app.get("/api/corpus")

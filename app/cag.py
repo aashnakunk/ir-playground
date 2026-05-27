@@ -12,19 +12,20 @@ from functools import lru_cache
 
 from app import chat
 from app.corpus import load_corpus
+from app.theme import active
 
 
-SYSTEM_PREFIX = """You are a helpful jazz tutor. The user will ask questions about jazz. Answer using ONLY the corpus of documents below. If the answer isn't in the corpus, say so. Cite docs by their [id] tag like [10].
-
-JAZZ CORPUS:
-"""
-
-
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
 def system_prompt() -> str:
+    t = active()
+    prefix = (
+        f"You are a helpful {t.tutor_role}. The user will ask questions about {t.name}. "
+        f"Answer using ONLY the corpus of documents below. If the answer isn't in the corpus, say so. "
+        f"Cite docs by their [id] tag like [10].\n\n{t.name.upper()} CORPUS:\n"
+    )
     docs = load_corpus()
     body = "\n\n".join(f"[{d['id']}] {d['title']}\n{d['text']}" for d in docs)
-    return SYSTEM_PREFIX + body
+    return prefix + body
 
 
 def answer(question: str) -> dict:

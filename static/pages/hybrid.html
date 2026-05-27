@@ -16,7 +16,7 @@
       <div class="panel">
         <h3>query</h3>
         <form id="qform" style="display:flex; gap:8px;">
-          <input type="text" id="q" value="electric jazz fusion" />
+          <input type="text" id="q" placeholder="enter a query..." value="" />
           <button type="submit">search</button>
         </form>
         <p class="muted" style="margin-top:8px;">
@@ -76,8 +76,13 @@
     }
 
     document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
-    run(document.getElementById("q").value);
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.hybrid || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
   </script>
+  <script src="/static/theme.js"></script>
   <script src="/static/chat-sidebar.js"></script>
 </body>
 </html>

@@ -21,7 +21,7 @@
       <div class="panel">
         <h3>query</h3>
         <form id="qform" style="display:flex; gap:8px;">
-          <input type="text" id="q" placeholder="modal jazz pioneers" value="modal jazz pioneers" />
+          <input type="text" id="q" placeholder="enter a query..." value="" />
           <button type="submit">search</button>
         </form>
         <p class="muted" style="margin-top:8px;">Try: <span class="kbd">bebop Charlie Parker</span>, <span class="kbd">brazilian rhythm</span>, <span class="kbd">piano trio interplay</span>, <span class="kbd">Mary Lou Williams</span>. Hover the dotted labels for explanations.</p>
@@ -175,8 +175,13 @@
       if (q) run(q);
     });
 
-    run(document.getElementById("q").value);
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.bm25 || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
   </script>
+  <script src="/static/theme.js"></script>
   <script src="/static/chat-sidebar.js"></script>
 </body>
 </html>

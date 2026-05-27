@@ -2,12 +2,15 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-CORPUS_PATH = Path(__file__).resolve().parent.parent / "data" / "corpus.json"
+from app.theme import active
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=4)
 def load_corpus() -> list[dict]:
-    with CORPUS_PATH.open() as f:
+    path = DATA_DIR / f"{active().corpus}.json"
+    with path.open() as f:
         return json.load(f)
 
 

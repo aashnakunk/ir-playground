@@ -21,7 +21,7 @@
       <div class="panel">
         <h3>ask the jazz tutor</h3>
         <form id="qform" style="display:flex; gap:8px;">
-          <input type="text" id="q" value="what made bebop different from swing?" />
+          <input type="text" id="q" placeholder="ask a question..." value="" />
           <button type="submit">ask</button>
         </form>
         <p class="muted" style="margin-top:8px;">We embed your question, pull the top-k semantically nearest docs, paste them into the user message, and ask the model. Then we show every step.</p>
@@ -83,8 +83,13 @@
     }
 
     document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); ask(document.getElementById("q").value.trim()); });
-    ask(document.getElementById("q").value);
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.rag || "";
+      document.getElementById("q").value = def;
+      if (def) ask(def);
+    });
   </script>
+  <script src="/static/theme.js"></script>
   <script src="/static/explain.js"></script>
   <script src="/static/chat-sidebar.js"></script>
 </body>

@@ -53,7 +53,7 @@
       <div class="panel">
         <h3>search traversal</h3>
         <form id="qform" style="display:flex; gap:8px;">
-          <input type="text" id="q" value="modal jazz pioneers" />
+          <input type="text" id="q" placeholder="enter a query..." value="" />
           <button type="submit">search & animate</button>
         </form>
         <div style="display:grid; grid-template-columns: 1fr 280px; gap:14px; margin-top:10px;">
@@ -171,7 +171,12 @@
     document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); doSearch(document.getElementById("q").value.trim()); });
 
     loadGraph();
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.hnsw || "";
+      document.getElementById("q").value = def;
+    });
   </script>
+  <script src="/static/theme.js"></script>
   <script src="/static/chat-sidebar.js"></script>
 </body>
 </html>

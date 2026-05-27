@@ -15,9 +15,14 @@ import numpy as np
 from openai import OpenAI
 
 from app.corpus import load_corpus
+from app.theme import active
 
-EMB_PATH = Path(__file__).resolve().parent.parent / "data" / "embeddings.json"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 MODEL = "text-embedding-3-small"
+
+
+def _emb_path() -> Path:
+    return DATA_DIR / f"embeddings_{active().corpus}.json"
 
 _client: OpenAI | None = None
 
@@ -38,15 +43,16 @@ def _embed_batch(texts: list[str]) -> list[list[float]]:
 def corpus_embeddings() -> tuple[list[dict], np.ndarray]:
     """Returns (docs, matrix [N, D]) — embeds & caches on first call."""
     docs = load_corpus()
-    if EMB_PATH.exists():
-        cached = json.loads(EMB_PATH.read_text())
+    emb_path = _emb_path()
+    if emb_path.exists():
+        cached = json.loads(emb_path.read_text())
         if cached.get("model") == MODEL and cached.get("ids") == [d["id"] for d in docs]:
             mat = np.array(cached["vectors"], dtype=np.float32)
             return docs, mat
     texts = [d["title"] + ". " + d["text"] for d in docs]
     vecs = _embed_batch(texts)
-    EMB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    EMB_PATH.write_text(json.dumps({
+    emb_path.parent.mkdir(parents=True, exist_ok=True)
+    emb_path.write_text(json.dumps({
         "model": MODEL,
         "ids": [d["id"] for d in docs],
         "vectors": vecs,

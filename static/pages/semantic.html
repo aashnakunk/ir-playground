@@ -17,7 +17,7 @@
       <div class="panel">
         <h3>query</h3>
         <form id="qform" style="display:flex; gap:8px;">
-          <input type="text" id="q" value="who turned jazz into electric music" />
+          <input type="text" id="q" placeholder="enter a query..." value="" />
           <button type="submit">search</button>
         </form>
         <p class="muted" style="margin-top:8px;">Query and docs are embedded with OpenAI <span class="kbd">text-embedding-3-small</span> (1536-dim). We rank by cosine similarity. The map below is a 2D PCA projection — close = semantically similar.</p>
@@ -99,8 +99,13 @@
     }
 
     document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
-    run(document.getElementById("q").value);
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.semantic || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
   </script>
+  <script src="/static/theme.js"></script>
   <script src="/static/chat-sidebar.js"></script>
 </body>
 </html>

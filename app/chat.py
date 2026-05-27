@@ -13,6 +13,8 @@ from typing import Any
 
 from openai import OpenAI
 
+from app.theme import active
+
 _client: OpenAI | None = None
 
 
@@ -27,7 +29,7 @@ def model() -> str:
     return os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 
-SYSTEM_TEMPLATE = """You are a friendly tutor embedded in 'jazzbot', a learning playground for information retrieval and RAG techniques. The user is exploring one technique at a time and can see a live visualization of it on screen.
+SYSTEM_TEMPLATE = """You are a friendly {tutor_role} embedded in an interactive playground for information retrieval and RAG techniques. The user is exploring one technique at a time and can see a live visualization of it on screen, using a small corpus about {theme}.
 
 Your job: explain what they are seeing in plain language, ground every claim in the specific numbers/docs visible on their screen (provided below as VIEW_STATE), and prefer short answers with concrete references like 'doc #7 scored 4.2 because the term "modal" had IDF 2.1'.
 
@@ -40,7 +42,12 @@ VIEW_STATE (JSON):
 
 def answer(message: str, view_state: dict[str, Any], history: list[dict] | None = None) -> str:
     history = history or []
-    system = SYSTEM_TEMPLATE.format(view_state=json.dumps(view_state, indent=2))
+    t = active()
+    system = SYSTEM_TEMPLATE.format(
+        view_state=json.dumps(view_state, indent=2),
+        tutor_role=t.tutor_role,
+        theme=t.name,
+    )
     messages = [
         {"role": "system", "content": system},
         *history,

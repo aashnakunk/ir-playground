@@ -17,7 +17,7 @@
       <div class="panel">
         <h3>query</h3>
         <form id="qform" style="display:flex; gap:8px;">
-          <input type="text" id="q" value="bebop Charlie Parker" />
+          <input type="text" id="q" placeholder="enter a query..." value="" />
           <button type="submit">search</button>
         </form>
         <p class="muted" style="margin-top:8px;">TF-IDF = how often the term appears in this doc × how rare it is in the corpus. Cosine-similarity ranking via sklearn's <span class="kbd">TfidfVectorizer</span>.</p>
@@ -123,8 +123,14 @@
     }
 
     document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
-    run(document.getElementById("q").value); loadHeatmap();
+    loadHeatmap();
+    window.THEME_READY.then(t => {
+      const def = t.default_queries.tfidf || "";
+      document.getElementById("q").value = def;
+      if (def) run(def);
+    });
   </script>
+  <script src="/static/theme.js"></script>
   <script src="/static/chat-sidebar.js"></script>
 </body>
 </html>
