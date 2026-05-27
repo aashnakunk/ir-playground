@@ -14,7 +14,7 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>CAG</h1><h2>Skip the lookup. Hand the model the <em>whole</em> corpus and let it find the answer. Cached so it's not slow.</h2></div>
+        <div><h1>CAG</h1><h2>Skip the lookup step entirely. Hand the AI your <em>entire</em> corpus upfront and let it find what's relevant on its own. Modern LLMs auto-cache the corpus, so the 2nd question onwards is near-instant.</h2></div>
         <nav><a href="/">home</a></nav>
       </div>
 
@@ -24,7 +24,7 @@
           <li>Ask a question. Notice the prompt size at the top (Step 1) — the <strong>entire corpus</strong> was sent.</li>
           <li>Look at the <strong>cached</strong> number under "cost &amp; latency". On the first call it's <strong>0</strong>.</li>
           <li>Ask another question. The cached number jumps — OpenAI noticed it saw the same giant system prompt before and bills it at a discount.</li>
-          <li>Compare to the RAG page: that one sent ~250 prompt tokens. This sends ~1,800. Without caching, CAG would be much pricier.</li>
+          <li>For context: a typical "look it up then answer" pipeline sends ~250 prompt tokens. This sends ~1,800 every time. Without auto-caching, CAG would be 7× more expensive — caching is the whole reason it's viable.</li>
           <li>Ask the tutor: <em>"when would RAG be better than CAG?"</em></li>
         </ol>
         <div class="analogy"><strong>Think of it like:</strong> memorizing the textbook before the exam vs. flipping to a chapter mid-answer (that's RAG). CAG is slower per question if you do it once, but caching makes the second question onwards basically free.</div>

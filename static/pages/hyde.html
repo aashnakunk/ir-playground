@@ -14,7 +14,7 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>HyDE</h1><h2>Hypothetical Document Embeddings. The LLM dreams up an answer first; we search with that.</h2></div>
+        <div><h1>HyDE</h1><h2>Let the AI write a draft answer first, then search using that draft. Counter-intuitively, this often finds better docs than searching the original question — even if the draft is wrong.</h2></div>
         <nav><a href="/">home</a></nav>
       </div>
 
@@ -22,7 +22,7 @@
         <h3>try this</h3>
         <ol>
           <li>Ask a terse question (the kind a real user might type).</li>
-          <li><strong>Left:</strong> plain semantic results — what you'd get by embedding the question directly.</li>
+          <li><strong>Left:</strong> baseline — what you'd get by searching with the raw question.</li>
           <li><strong>Middle:</strong> the hypothetical answer the LLM invented. It might be partially wrong — that's OK, we're not using it as truth, just as a richer query.</li>
           <li><strong>Right:</strong> HyDE results — what you get by embedding that hypothetical answer instead.</li>
           <li>For terse questions, HyDE often surfaces a better top-1. For already-rich queries, plain semantic wins.</li>

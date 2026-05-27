@@ -20,14 +20,14 @@
   <div class="layout">
     <main class="main">
       <div class="topbar">
-        <div><h1>Re-ranking</h1><h2>Retrieve cheap with semantic, then re-order with a smarter model. The 2-stage trick behind most production RAG.</h2></div>
+        <div><h1>Re-ranking</h1><h2>A two-stage funnel. First a fast (dumb) search pulls 15 candidates from millions of docs. Then a slow (smart) model re-orders those 15. The standard recipe behind nearly every production AI search system.</h2></div>
         <nav><a href="/">home</a></nav>
       </div>
 
       <div class="guide">
         <h3>try this</h3>
         <ol>
-          <li>Type a query and run. We retrieve the top-15 by semantic similarity, then ask an LLM to score each (query, doc) pair 0–10.</li>
+          <li>Type a query and run. Stage 1: a fast retriever pulls the top-15 likely-relevant docs. Stage 2: an LLM reads each one and scores it 0–10 for actual relevance.</li>
           <li>The big table is "all candidates scored". The 🟢 / 🔴 highlights show which docs moved up or down vs the cheap retriever.</li>
           <li>Top-5 "before" vs "after" sits at the top.</li>
           <li>Notice: the LLM often promotes docs that semantically share <em>meaning</em> but didn't have the perfect embedding distance — and demotes off-topic near-neighbors.</li>

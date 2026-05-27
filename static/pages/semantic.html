@@ -21,7 +21,7 @@
           <li>The ★ on the map is your query. The closest dots are the most similar docs by meaning. Top-k are ringed in orange.</li>
           <li>Try a query that uses <strong>none of the exact words</strong> from any doc. Notice it still finds the right one — that's the magic.</li>
           <li>Hover any dot on the map to see its title and similarity score.</li>
-          <li>Run the same query on the TF-IDF or BM25 page. Compare — semantic often finds docs keyword search missed.</li>
+          <li>Try a query with <strong>none of the exact words</strong> from any doc. It'll still find the right one — that's the headline trick. Keyword search would have returned nothing.</li>
         </ol>
         <div class="analogy"><strong>Think of it like:</strong> Shazam for ideas. You hum the <em>meaning</em>; it finds docs that hum a similar tune — even if they use totally different words.</div>
         <details><summary>what's actually happening?</summary><p>Each doc and your query are turned into a list of 1,536 numbers (an "embedding") by an OpenAI model. Similar meanings produce similar number-lists. Ranking = which list is most similar to your query's list, measured by <strong>cosine similarity</strong>. The 2D map is a flattened projection so you can see clusters.</p></details>

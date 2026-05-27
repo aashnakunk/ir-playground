@@ -7,7 +7,7 @@ Open items for the next iteration. Picked up from the chat session ending 2026-0
 - [x] **Reshape the home page** — wiki-style hero + tiled algo grid grouped by category. (Single-page solution — no separate /explore page; the tiles ARE the explore surface.) Done.
 - [x] **Replace the top-bar nav** with a single `github` link. Done.
 - [x] **Fix BM25 page** — no longer references "TF-IDF predecessor" framing; stands alone. Done.
-- [ ] **Audit remaining pages for similar standalone-framing issues.** Each page subtitle + guide should make sense without depending on the user having read sibling pages first.
+- [x] **Audit every page for standalone framing.** All 14 algo pages now have self-contained subtitles + guide steps. No more "compare to the BM25 page", "predecessor", or "as we saw before" references. Done.
 
 ## Copy / content cleanup
 
