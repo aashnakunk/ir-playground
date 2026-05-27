@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>TF-IDF — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>TF-IDF</h1><h2>Term-weighting from first principles.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="panel">
+        <h3>query</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="bebop Charlie Parker" />
+          <button type="submit">search</button>
+        </form>
+        <p class="muted" style="margin-top:8px;">TF-IDF = how often the term appears in this doc × how rare it is in the corpus. Cosine-similarity ranking via sklearn's <span class="kbd">TfidfVectorizer</span>.</p>
+      </div>
+
+      <div class="panel" id="idf-panel" style="display:none;">
+        <h3><span class="explainable" data-explain="Inverse document frequency: log(N / df) with smoothing. Rare terms get higher IDF.">IDF per query term</span></h3>
+        <div id="idf"></div>
+        <div id="missing" class="muted" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="panel">
+        <h3>top results</h3>
+        <div id="results"></div>
+      </div>
+
+      <div class="panel">
+        <h3>term × doc TF-IDF heatmap <span class="muted">(top-50 highest-IDF terms)</span></h3>
+        <div id="heatmap"></div>
+        <p class="muted">Each row is a doc; each column is a term; cell brightness = TF-IDF weight. Sparse on purpose — most terms only matter in a few docs.</p>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    const palette = ["#f5b14a","#6ec1ff","#6ee7b7","#fca5a5","#c4b5fd","#fcd34d","#5eead4"];
+    let latest = null, selectedId = null;
+    window.JazzbotView = { page:"tfidf", state: () => ({
+      page:"tfidf", query: latest?.query, query_terms: latest?.query_terms,
+      missing_terms: latest?.missing_terms, idf: latest?.idf,
+      top_results: latest ? latest.results.map(r=>({rank:r.rank,id:r.id,title:r.title,score:+r.score.toFixed(4),term_scores:Object.fromEntries(Object.entries(r.term_scores).map(([t,s])=>[t,+s.toFixed(4)]))})) : [],
+      selected_doc_id: selectedId
+    }) };
+
+    function termColor(t, ts){ return palette[ts.indexOf(t)%palette.length]; }
+
+    async function run(q){
+      const data = await fetch(`/api/tfidf/search?q=${encodeURIComponent(q)}&top_k=5`).then(r=>r.json());
+      latest = data; selectedId = null; render(data);
+    }
+    function render(d){
+      const idf = document.getElementById("idf"); idf.innerHTML = "";
+      d.query_terms.forEach(t => {
+        const c = termColor(t, d.query_terms);
+        const v = d.idf[t]||0;
+        idf.insertAdjacentHTML("beforeend", `<span style="margin-right:12px"><i style="display:inline-block;width:9px;height:9px;background:${c};border-radius:2px;margin-right:4px;vertical-align:middle;"></i><strong>${t}</strong> = ${v.toFixed(3)}</span>`);
+      });
+      document.getElementById("missing").textContent = d.missing_terms?.length ? `out-of-vocab terms (ignored): ${d.missing_terms.join(", ")}` : "";
+      document.getElementById("idf-panel").style.display = "block";
+
+      const res = document.getElementById("results"); res.innerHTML = "";
+      const maxScore = Math.max(...d.results.map(r=>r.score), 0.001);
+      d.results.forEach(r => {
+        const el = document.createElement("div"); el.className = "result";
+        el.innerHTML = `<div class="head"><div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div><div class="score">${r.score.toFixed(4)}</div></div><div class="body">${r.text}</div>`;
+        const bar = document.createElement("div"); bar.className = "bar";
+        const ws = 100/maxScore;
+        d.query_terms.forEach(t => {
+          const ts = r.term_scores[t]||0;
+          if (ts<=0) return;
+          const seg = document.createElement("div");
+          seg.style.background = termColor(t, d.query_terms);
+          seg.style.width = (ts*ws)+"%";
+          seg.title = `${t}: ${ts.toFixed(4)}`;
+          bar.appendChild(seg);
+        });
+        el.appendChild(bar);
+        const leg = document.createElement("div"); leg.className = "legend";
+        d.query_terms.forEach(t => { const ts=r.term_scores[t]||0; const c=termColor(t,d.query_terms); leg.innerHTML += `<span><i style="background:${c}"></i>${t} ${ts.toFixed(4)}</span>`; });
+        el.appendChild(leg);
+        el.addEventListener("click", ()=>{ selectedId=r.id; document.querySelectorAll(".result").forEach(n=>n.classList.remove("selected")); el.classList.add("selected"); });
+        res.appendChild(el);
+      });
+    }
+
+    async function loadHeatmap(){
+      const m = await fetch("/api/tfidf/matrix?top_n_terms=50").then(r=>r.json());
+      const W = 900, rowH = 18, colW = 16, padL = 200, padT = 100;
+      const H = padT + m.doc_ids.length * rowH;
+      const svg = d3.select("#heatmap").append("svg").attr("width", W).attr("height", H).style("background","#11141a").style("border","1px solid var(--line)").style("border-radius","8px");
+      const max = d3.max(m.matrix.flat());
+      const color = d3.scaleSequential(d3.interpolateInferno).domain([0, max]);
+      // term labels
+      svg.append("g").selectAll("text").data(m.terms).enter().append("text")
+        .attr("x", (_,i)=> padL + i*colW + colW/2)
+        .attr("y", padT - 6)
+        .attr("transform", (_,i)=> `rotate(-60, ${padL + i*colW + colW/2}, ${padT - 6})`)
+        .attr("fill", "#9aa3b2").attr("font-size", 10).attr("text-anchor","start").text(d=>d);
+      // doc labels
+      svg.append("g").selectAll("text").data(m.doc_titles).enter().append("text")
+        .attr("x", padL - 8).attr("y", (_,i)=> padT + i*rowH + 13)
+        .attr("fill", "#9aa3b2").attr("font-size", 10).attr("text-anchor","end").text(d=>d.length>32?d.slice(0,30)+"…":d);
+      // cells
+      const cells = [];
+      m.matrix.forEach((row,ri)=> row.forEach((v,ci)=> cells.push({ri,ci,v})));
+      svg.append("g").selectAll("rect").data(cells).enter().append("rect")
+        .attr("x", c=> padL + c.ci*colW).attr("y", c=> padT + c.ri*rowH)
+        .attr("width", colW-1).attr("height", rowH-1)
+        .attr("fill", c=> c.v>0 ? color(c.v) : "#1a1d24")
+        .append("title").text(c=> `${m.doc_titles[c.ri]} × ${m.terms[c.ci]} = ${c.v.toFixed(3)}`);
+    }
+
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
+    run(document.getElementById("q").value); loadHeatmap();
+  </script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

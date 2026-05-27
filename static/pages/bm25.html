@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BM25 — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1>BM25</h1>
+          <h2>How a query scores against each document, term by term.</h2>
+        </div>
+        <nav>
+          <a href="/">home</a>
+        </nav>
+      </div>
+
+      <div class="panel">
+        <h3>query</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" placeholder="modal jazz pioneers" value="modal jazz pioneers" />
+          <button type="submit">search</button>
+        </form>
+        <p class="muted" style="margin-top:8px;">Try: <span class="kbd">bebop Charlie Parker</span>, <span class="kbd">brazilian rhythm</span>, <span class="kbd">piano trio interplay</span>, <span class="kbd">Mary Lou Williams</span>. Hover the dotted labels for explanations.</p>
+      </div>
+
+      <div class="panel">
+        <h3>params</h3>
+        <div class="muted">
+          <span class="explainable" data-explain="k1 controls term-frequency saturation. Higher k1 = more reward for repeated terms; lower k1 = TF saturates faster. rank_bm25 default is 1.5.">k1</span>:
+          <span id="p_k1">—</span> &nbsp;
+          <span class="explainable" data-explain="b controls how strongly long documents are penalized. b=1 = full length normalization, b=0 = no length penalty. Default 0.75.">b</span>:
+          <span id="p_b">—</span> &nbsp;
+          <span class="explainable" data-explain="Average document length (tokens) across the corpus. Used to normalize each doc's length.">avgdl</span>:
+          <span id="p_avgdl">—</span> &nbsp;
+          <span class="explainable" data-explain="Number of documents in the corpus.">N</span>:
+          <span id="p_N">—</span>
+        </div>
+      </div>
+
+      <div class="panel" id="idf-panel" style="display:none;">
+        <h3><span class="explainable" data-explain="IDF (inverse document frequency) weights rare terms higher. A term appearing in every doc gets ~0; a term in only one doc gets a big boost. BM25 multiplies each per-term score by this term's IDF.">IDF per query term</span></h3>
+        <div id="idf"></div>
+      </div>
+
+      <div class="panel">
+        <h3>top results <span class="muted">(click a result to focus it for the tutor)</span></h3>
+        <div id="results"></div>
+      </div>
+    </main>
+
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    // Color palette for query terms
+    const palette = ["#f5b14a", "#6ec1ff", "#6ee7b7", "#fca5a5", "#c4b5fd", "#fcd34d", "#5eead4"];
+
+    let latest = null;
+    let selectedId = null;
+
+    window.JazzbotView = {
+      page: "bm25",
+      state: () => ({
+        page: "bm25",
+        query: latest ? latest.query : null,
+        query_terms: latest ? latest.query_terms : [],
+        params: latest ? latest.params : null,
+        idf: latest ? latest.idf : null,
+        top_results: latest ? latest.results.map(r => ({
+          rank: r.rank, id: r.id, title: r.title, score: +r.score.toFixed(3),
+          term_scores: Object.fromEntries(Object.entries(r.term_scores).map(([t, s]) => [t, +s.toFixed(3)])),
+          doc_len: r.doc_len
+        })) : [],
+        selected_doc_id: selectedId,
+        selected_doc: selectedId && latest
+          ? latest.results.find(r => r.id === selectedId) || null
+          : null
+      })
+    };
+
+    async function run(query) {
+      const url = `/api/bm25/search?q=${encodeURIComponent(query)}&top_k=5`;
+      const res = await fetch(url);
+      const data = await res.json();
+      latest = data;
+      selectedId = null;
+      render(data);
+    }
+
+    function termColor(term, terms) {
+      const i = terms.indexOf(term);
+      return palette[i % palette.length];
+    }
+
+    function render(data) {
+      document.getElementById("p_k1").textContent = data.params.k1;
+      document.getElementById("p_b").textContent = data.params.b;
+      document.getElementById("p_avgdl").textContent = data.params.avgdl.toFixed(2);
+      document.getElementById("p_N").textContent = data.params.N;
+
+      const idfDiv = document.getElementById("idf");
+      idfDiv.innerHTML = "";
+      data.query_terms.forEach(t => {
+        const c = termColor(t, data.query_terms);
+        const v = data.idf[t] || 0;
+        const chip = document.createElement("span");
+        chip.style.marginRight = "12px";
+        chip.innerHTML = `<i style="display:inline-block;width:9px;height:9px;background:${c};border-radius:2px;margin-right:4px;vertical-align:middle;"></i><strong>${t}</strong> = ${v.toFixed(3)}`;
+        idfDiv.appendChild(chip);
+      });
+      document.getElementById("idf-panel").style.display = data.query_terms.length ? "block" : "none";
+
+      const resDiv = document.getElementById("results");
+      resDiv.innerHTML = "";
+      const maxScore = Math.max(...data.results.map(r => r.score), 0.001);
+
+      data.results.forEach(r => {
+        const el = document.createElement("div");
+        el.className = "result";
+        el.dataset.id = r.id;
+
+        const head = document.createElement("div");
+        head.className = "head";
+        head.innerHTML = `<div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}, ${r.doc_len} tokens]</span></div><div class="score">${r.score.toFixed(3)}</div>`;
+        el.appendChild(head);
+
+        const body = document.createElement("div");
+        body.className = "body";
+        body.textContent = r.text;
+        el.appendChild(body);
+
+        // Stacked bar of per-term contributions
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.title = "per-term contribution to total score";
+        const widthScale = 100 / maxScore;
+        data.query_terms.forEach(t => {
+          const ts = r.term_scores[t] || 0;
+          if (ts <= 0) return;
+          const seg = document.createElement("div");
+          seg.style.background = termColor(t, data.query_terms);
+          seg.style.width = (ts * widthScale) + "%";
+          seg.title = `${t}: ${ts.toFixed(3)}`;
+          bar.appendChild(seg);
+        });
+        el.appendChild(bar);
+
+        const legend = document.createElement("div");
+        legend.className = "legend";
+        data.query_terms.forEach(t => {
+          const ts = r.term_scores[t] || 0;
+          const c = termColor(t, data.query_terms);
+          legend.innerHTML += `<span><i style="background:${c}"></i>${t} ${ts.toFixed(3)}</span>`;
+        });
+        el.appendChild(legend);
+
+        el.addEventListener("click", () => {
+          selectedId = r.id;
+          document.querySelectorAll(".result").forEach(n => n.classList.remove("selected"));
+          el.classList.add("selected");
+        });
+
+        resDiv.appendChild(el);
+      });
+    }
+
+    document.getElementById("qform").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const q = document.getElementById("q").value.trim();
+      if (q) run(q);
+    });
+
+    run(document.getElementById("q").value);
+  </script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

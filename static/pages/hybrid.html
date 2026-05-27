@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Hybrid search — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>Hybrid search</h1><h2>BM25 + semantic, fused with Reciprocal Rank Fusion.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="panel">
+        <h3>query</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="electric jazz fusion" />
+          <button type="submit">search</button>
+        </form>
+        <p class="muted" style="margin-top:8px;">
+          <span class="explainable" data-explain="RRF score for doc d = sum over retrievers r of 1 / (k + rank_r(d)). Defaults: k=60. Works well without score calibration because it only uses ranks.">RRF</span>
+          combines the two ranked lists without needing the raw scores to be comparable.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h3>side-by-side rankings</h3>
+        <div id="cols" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px;"></div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    let latest = null;
+    window.JazzbotView = { page:"hybrid", state: () => ({
+      page:"hybrid", query: latest?.query, rrf_k: latest?.rrf_k,
+      bm25: latest?.bm25, semantic: latest?.semantic, fused: latest?.fused
+    }) };
+
+    async function run(q){
+      const d = await fetch(`/api/hybrid/search?q=${encodeURIComponent(q)}&top_k=8`).then(r=>r.json());
+      latest = d; render(d);
+    }
+
+    function colHTML(title, rows, scoreLabel){
+      return `<div><h3>${title}</h3>` + rows.map(r => `
+        <div class="result">
+          <div class="head">
+            <div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div>
+            <div class="score">${scoreLabel(r)}</div>
+          </div>
+        </div>
+      `).join("") + `</div>`;
+    }
+
+    function render(d){
+      const c = document.getElementById("cols");
+      c.innerHTML = "";
+      c.insertAdjacentHTML("beforeend", colHTML("BM25", d.bm25, r=>r.score.toFixed(3)));
+      c.insertAdjacentHTML("beforeend", colHTML("Semantic (cosine)", d.semantic, r=>r.score.toFixed(3)));
+      c.insertAdjacentHTML("beforeend", `<div><h3>RRF Fused</h3>` + d.fused.map(r=>`
+        <div class="result">
+          <div class="head">
+            <div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div>
+            <div class="score">${r.rrf_score.toFixed(4)}</div>
+          </div>
+          <div class="legend">
+            bm25 rank: ${r.bm25_rank ?? "—"} · semantic rank: ${r.semantic_rank ?? "—"}
+          </div>
+        </div>
+      `).join("") + `</div>`);
+    }
+
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); run(document.getElementById("q").value.trim()); });
+    run(document.getElementById("q").value);
+  </script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

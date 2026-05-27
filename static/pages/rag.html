@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>RAG — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    pre.prompt { background:#11141a; padding:12px; border-radius:6px; max-height:280px; overflow:auto; white-space:pre-wrap; font-size:12px; color:#cbd2dc; }
+    .stat { display:inline-block; margin-right:18px; }
+    .stat strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>RAG</h1><h2>Retrieve top-k, paste into prompt, generate.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="panel">
+        <h3>ask the jazz tutor</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="what made bebop different from swing?" />
+          <button type="submit">ask</button>
+        </form>
+        <p class="muted" style="margin-top:8px;">We embed your question, pull the top-k semantically nearest docs, paste them into the user message, and ask the model. Then we show every step.</p>
+      </div>
+
+      <div class="panel" id="loading" style="display:none;"><span class="muted">retrieving + generating...</span></div>
+
+      <div id="out"></div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script>
+    let latest = null;
+    window.JazzbotView = { page:"rag", state: () => latest ? ({
+      page:"rag", question: latest.question,
+      retrieved: latest.retrieved.map(r=>({id:r.id,title:r.title,rank:r.rank,score:+r.score.toFixed(4)})),
+      answer: latest.answer, usage: latest.usage, elapsed_ms: latest.elapsed_ms, model: latest.model
+    }) : { page:"rag" } };
+
+    async function ask(q){
+      document.getElementById("loading").style.display="block";
+      document.getElementById("out").innerHTML="";
+      try {
+        const d = await fetch("/api/rag/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q, top_k:4})}).then(r=>r.json());
+        if (d.detail) throw new Error(d.detail);
+        latest = d; render(d);
+      } catch(e){
+        document.getElementById("out").innerHTML = `<div class="panel"><span style="color:var(--warn)">${e.message}</span></div>`;
+      } finally {
+        document.getElementById("loading").style.display="none";
+      }
+    }
+
+    function render(d){
+      const out = document.getElementById("out");
+      out.innerHTML = `
+        <div class="panel">
+          <h3>1. retrieved chunks</h3>
+          ${d.retrieved.map(r=>`<div class="result"><div class="head"><div class="title">#${r.rank} · ${r.title} <span class="muted">[id ${r.id}]</span></div><div class="score">cos ${r.score.toFixed(4)}</div></div><div class="body">${r.text}</div></div>`).join("")}
+        </div>
+        <div class="panel">
+          <h3>2. exact prompt sent to the model</h3>
+          <pre class="prompt"><strong>system:</strong> ${d.system_prompt}\n\n<strong>user:</strong> ${d.user_prompt}</pre>
+        </div>
+        <div class="panel">
+          <h3>3. model answer</h3>
+          <div style="white-space:pre-wrap;">${d.answer}</div>
+        </div>
+        <div class="panel">
+          <h3>cost & latency</h3>
+          <span class="stat">model: <strong>${d.model}</strong></span>
+          <span class="stat">latency: <strong>${d.elapsed_ms} ms</strong></span>
+          <span class="stat">prompt tokens: <strong>${d.usage.prompt_tokens}</strong></span>
+          <span class="stat">completion tokens: <strong>${d.usage.completion_tokens}</strong></span>
+          <span class="stat">total: <strong>${d.usage.total_tokens}</strong></span>
+        </div>
+      `;
+    }
+
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); ask(document.getElementById("q").value.trim()); });
+    ask(document.getElementById("q").value);
+  </script>
+  <script src="/static/explain.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CAG — jazzbot</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    pre.prompt { background:#11141a; padding:12px; border-radius:6px; max-height:280px; overflow:auto; white-space:pre-wrap; font-size:12px; color:#cbd2dc; }
+    .stat { display:inline-block; margin-right:18px; }
+    .stat strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div><h1>CAG</h1><h2>Stuff the whole corpus into a cached system prompt. No retrieval.</h2></div>
+        <nav><a href="/">home</a></nav>
+      </div>
+
+      <div class="panel">
+        <h3>ask the jazz tutor</h3>
+        <form id="qform" style="display:flex; gap:8px;">
+          <input type="text" id="q" value="what made bebop different from swing?" />
+          <button type="submit">ask</button>
+        </form>
+        <p class="muted" style="margin-top:8px;">
+          We send the entire jazz corpus as the system prompt every call. OpenAI auto-caches stable prefixes over ~1k tokens — so the
+          <span class="explainable" data-explain="When the same long system prompt is reused soon after, OpenAI bills cached input tokens at a discount and skips re-tokenizing. We surface cached_tokens from the API.">second ask onwards</span>
+          should show a higher <span class="kbd">cached_prompt_tokens</span> and lower latency than the first.
+        </p>
+      </div>
+
+      <div class="panel" id="loading" style="display:none;"><span class="muted">generating...</span></div>
+
+      <div id="out"></div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script>
+    let latest = null, history = [];
+    window.JazzbotView = { page:"cag", state: () => latest ? ({
+      page:"cag", question: latest.question, answer: latest.answer,
+      system_prompt_chars: latest.system_prompt_chars,
+      usage: latest.usage, elapsed_ms: latest.elapsed_ms, model: latest.model,
+      previous_runs: history.map(h=>({elapsed_ms:h.elapsed_ms,cached:h.usage.cached_prompt_tokens,prompt_tokens:h.usage.prompt_tokens}))
+    }) : { page:"cag" } };
+
+    async function ask(q){
+      document.getElementById("loading").style.display="block";
+      try {
+        const d = await fetch("/api/cag/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})}).then(r=>r.json());
+        if (d.detail) throw new Error(d.detail);
+        latest = d; history.push(d); render(d);
+      } catch(e){
+        document.getElementById("out").innerHTML = `<div class="panel"><span style="color:var(--warn)">${e.message}</span></div>`;
+      } finally {
+        document.getElementById("loading").style.display="none";
+      }
+    }
+
+    function render(d){
+      document.getElementById("out").innerHTML = `
+        <div class="panel">
+          <h3>1. system prompt preview <span class="muted">(${d.system_prompt_chars.toLocaleString()} chars total)</span></h3>
+          <pre class="prompt">${d.system_prompt_preview}</pre>
+        </div>
+        <div class="panel">
+          <h3>2. model answer</h3>
+          <div style="white-space:pre-wrap;">${d.answer}</div>
+        </div>
+        <div class="panel">
+          <h3>cost & latency</h3>
+          <span class="stat">model: <strong>${d.model}</strong></span>
+          <span class="stat">latency: <strong>${d.elapsed_ms} ms</strong></span>
+          <span class="stat">prompt tokens: <strong>${d.usage.prompt_tokens}</strong></span>
+          <span class="stat">cached: <strong>${d.usage.cached_prompt_tokens}</strong></span>
+          <span class="stat">completion: <strong>${d.usage.completion_tokens}</strong></span>
+        </div>
+        ${history.length > 1 ? `<div class="panel"><h3>run history</h3>` + history.map((h,i)=>`<div>run ${i+1}: ${h.elapsed_ms} ms · prompt ${h.usage.prompt_tokens} (cached ${h.usage.cached_prompt_tokens})</div>`).join("") + `</div>` : ""}
+      `;
+    }
+
+    document.getElementById("qform").addEventListener("submit", e=>{ e.preventDefault(); ask(document.getElementById("q").value.trim()); });
+    ask(document.getElementById("q").value);
+  </script>
+  <script src="/static/explain.js"></script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>

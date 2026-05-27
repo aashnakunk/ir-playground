@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>jazzbot — IR & RAG playground</title>
+  <link rel="stylesheet" href="/static/common.css" />
+  <style>
+    .topics { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .topic { display:block; padding: 14px 16px; border:1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
+    .topic:hover { border-color: var(--accent); text-decoration: none; }
+    .topic h4 { margin: 0 0 4px 0; color: var(--accent); }
+    .topic p { margin: 0; color: var(--ink-dim); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1>jazzbot</h1>
+          <h2>An interactive playground for IR & RAG, themed in jazz.</h2>
+        </div>
+        <nav>
+          <a href="/pages/tfidf.html">tfidf</a>
+          <a href="/pages/bm25.html">bm25</a>
+          <a href="/pages/semantic.html">semantic</a>
+          <a href="/pages/hybrid.html">hybrid</a>
+          <a href="/pages/hnsw.html">hnsw</a>
+          <a href="/pages/rag.html">rag</a>
+          <a href="/pages/cag.html">cag</a>
+        </nav>
+      </div>
+
+      <div class="panel">
+        <h3>how this works</h3>
+        <p>Each page below explores one retrieval or generation technique using a small jazz corpus (~30 docs). Every page has a live visual and a sidebar tutor (OpenAI) that can see exactly what you're looking at — ask it <em>"why did doc #10 win?"</em> and it will reference real scores.</p>
+      </div>
+
+      <div class="panel">
+        <h3>topics</h3>
+        <div class="topics">
+          <a class="topic" href="/pages/tfidf.html"><h4>TF-IDF</h4><p>Per-term contributions and a term×doc heatmap.</p></a>
+          <a class="topic" href="/pages/bm25.html"><h4>BM25</h4><p>TF-IDF with saturation and length normalization.</p></a>
+          <a class="topic" href="/pages/semantic.html"><h4>Semantic search</h4><p>Cosine over embeddings + 2D map of meaning.</p></a>
+          <a class="topic" href="/pages/hybrid.html"><h4>Hybrid (RRF)</h4><p>BM25 + semantic, fused without score calibration.</p></a>
+          <a class="topic" href="/pages/hnsw.html"><h4>HNSW</h4><p>Layered graph, search traversal, M / ef sliders.</p></a>
+          <a class="topic" href="/pages/rag.html"><h4>RAG</h4><p>Retrieve top-k → prompt → generate. Every step visible.</p></a>
+          <a class="topic" href="/pages/cag.html"><h4>CAG</h4><p>Full corpus in cached system prompt. Compare cost vs RAG.</p></a>
+        </div>
+      </div>
+    </main>
+    <aside id="chat"></aside>
+  </div>
+
+  <script src="/static/explain.js"></script>
+  <script>
+    window.JazzbotView = { page: "index", state: () => ({ page: "index", note: "user is on the landing page, no query yet" }) };
+  </script>
+  <script src="/static/chat-sidebar.js"></script>
+</body>
+</html>
